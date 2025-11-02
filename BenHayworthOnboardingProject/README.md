@@ -2,7 +2,7 @@
 
 
 ## Setup
-An n-dimensional, 2-d generated topographical map with p peaks is generated. Using this generated grid, noisy humidity graphs are generated. Also, node edges are generated representing signed height differences, which connect every coordinate point on the grid to its 4 neighbors. Following this, the task is to **predict the original peaks** of the graph using the noisy humidity representations, generated edge costs, and graph neural network classifiers.
+An nxn, 2-d generated topographical map with p peaks is generated. Using this generated grid, noisy humidity graphs are generated. Also, node edges are generated representing signed height differences, which connect every coordinate point on the grid to its 4 neighbors. Following this, the task is to **predict the original peaks** of the graph using the noisy humidity representations, generated edge costs, and graph neural network classifiers.
 
 ## Implementation
 Following the generation of the entire 2-D graph, our classification and message passing algorithm utilized a 3-layer graph convolutional neural network, that outputed a single node representing the classification of peak or not peak. After each layer, leaky ReLu activation functions were implemented in order to not completely zero out gradients. After this, a simple binary cross entropy loss function was utilized to train the network.
