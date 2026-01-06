@@ -1,0 +1,30 @@
+import numpy as np
+import networkx as nx
+from torch_geometric.datasets import Planetoid
+from torch_geometric.utils import to_networkx
+
+dataset = Planetoid(root="data/Cora", name="Cora")
+data = dataset[0]
+G = to_networkx(data, to_undirected=True)
+
+n = G.number_of_nodes()
+m = G.number_of_edges()
+p = m / (n * (n - 1) / 2)
+
+real_clustering = nx.average_clustering(G)
+real_transitivity = nx.transitivity(G)
+real_triangles = sum(nx.triangles(G).values())
+
+cluster_vals = []
+trans_vals = []
+triangle_vals = []
+
+for i in range(1000):
+    R = nx.erdos_renyi_graph(n, p)
+    cluster_vals.append(nx.average_clustering(R))
+    trans_vals.append(nx.transitivity(R))
+    triangle_vals.append(sum(nx.triangles(R).values()))
+
+print(real_clustering, np.mean(cluster_vals))
+print(real_transitivity, np.mean(trans_vals))
+print(real_triangles, np.mean(triangle_vals))
