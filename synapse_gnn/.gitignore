@@ -1,0 +1,15 @@
+/.ipynb_checkpoints
+/stage1_requirements.txt
+/stage2_requirements.txt
+/stage3_requirements.txt
+/graph_exports
+/*.pt
+/*saved_models
+/__pycache__
+/cache_data
+/processed_edges
+*.json
+*.pth
+*.npy
+/cache_spatial
+/spatial_training/__pycache__
