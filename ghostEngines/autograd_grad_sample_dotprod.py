@@ -28,7 +28,7 @@ def add_hooks(
 ):
     r"""
     Adds hooks to a model to compute gradient dot products and accumulate
-    training gradients.
+    training gradients for GRAPH datasets.
 
     The hooks will:
     1. Save activations into ``layer.activations`` during the forward pass.

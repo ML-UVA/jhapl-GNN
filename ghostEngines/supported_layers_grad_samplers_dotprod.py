@@ -1,4 +1,3 @@
-
 import torch
 import transformers.pytorch_utils
 from torch import nn
@@ -173,70 +172,6 @@ def _compute_linear_train_grad(layer: nn.Linear, A: torch.Tensor, B: torch.Tenso
     
     return grad_weight
 
-
-
-
-# Embedding Layer Implementation
-# #############################################################################
-
-def _compute_embedding_dot_product(layer: nn.Embedding, A: torch.Tensor, B: torch.Tensor, val_batch_size: int):
-    """Computes the gradient dot-product for an nn.Embedding layer."""
-
-    # Detach the tensors to ensure they are not part of the computation graph.
-    A = A.detach()
-    B = B.detach()
-
-    # Cast B to bfloat16 for efficiency.
-    B = B.to(torch.bfloat16)
-
-    train_batch_size = A.size(0) - val_batch_size
-    if train_batch_size <= 0:
-        raise ValueError("No training samples to compute dot product, check batch sizes.")
-
-    A_train, A_val = torch.split(A, [train_batch_size, val_batch_size], dim=0)
-    B_train, B_val = torch.split(B, [train_batch_size, val_batch_size], dim=0)
-
-    # Ensure the index tensors are of integer type (long) before using them.
-    A_train_long = A_train.long()
-    A_val_long = A_val.long()
-
-    vocab_size, d_f = layer.weight.shape
-    grad_val = torch.zeros((vocab_size, d_f), dtype=torch.bfloat16, device=B_val.device)
-    grad_val.index_add_(
-        0,
-        A_val_long.reshape(-1),                     # indices  [val_batch * seq]
-        B_val.reshape(-1, d_f)                      # vectors  [val_batch * seq, d_f]
-    )
-
-    dot_products = (B_train * grad_val[A_train_long]).float().sum(dim=[1, 2])
-    layer.weight.grad_dot_prod = dot_products
-
-
-def _compute_embedding_train_grad(layer: nn.Embedding, A: torch.Tensor, B: torch.Tensor, val_batch_size: int):
-    """
-    Computes the training gradient for an nn.Embedding layer.
-    This version always computes the average gradient.
-    """
-
-    train_batch_size = A.size(0) - val_batch_size
-    if train_batch_size <= 0:
-        return None
-
-    A_train, _ = torch.split(A, [train_batch_size, val_batch_size], dim=0)
-    B_train, _ = torch.split(B, [train_batch_size, val_batch_size], dim=0)
-
-    A_train_long = A_train.long()
-
-    grad_weight = torch.zeros_like(layer.weight)
-    grad_weight.index_add_(0, A_train_long.reshape(-1), B_train.reshape(-1, B_train.shape[-1]))
-
-    # Always divide by the number of training samples to get the AVERAGE gradient
-    grad_weight /= train_batch_size
-    
-    return grad_weight
-
-
-
 # LayerNorm Layer Implementation
 # #############################################################################
 
@@ -367,237 +302,90 @@ def _compute_layernorm_train_grad(
     return None
 
 
-def _compute_Conv1D_dot_product(
-    layer: nn.Linear,
-    A: torch.Tensor,
-    B: torch.Tensor,
-    val_batch_size: int
-) -> None:
+def _compute_gcnconv_dot_product(layer, A, B, val_batch_size):
     """
-    Computes the gradient dot-product between the validation gradient and each of the
-    training data's per-sample gradients for a Conv1D layer.
-
-    Args:
-        layer: The Conv1D layer.
-        A: The input activations from the combined (train + val) batch.
-        B: The output gradients from the combined (train + val) batch.
-        val_batch_size: The number of samples in the validation batch.
+    A: aggregated node features after adjacency  [N, F]
+    B: backprop gradients at output              [N, P]
     """
-
     if A is None:
         raise ValueError("Input activations A cannot be None.")
     if B is None:
         raise ValueError("Output gradients B cannot be None.")
 
-    # Detach the tensors to ensure they are not part of the computation graph.
+
     A = A.detach()
     B = B.detach()
 
-    # Cast A and B to bfloat16 for efficiency.
-    A = A.to(torch.bfloat16)
-    B = B.to(torch.bfloat16)
-
-    train_batch_size = A.size(0) - val_batch_size
-
-    if train_batch_size <= 0:
-        raise ValueError("No training samples to compute dot product, check batch sizes.")
-
-    A_train, A_val = torch.split(A, [train_batch_size, val_batch_size], dim=0)
-    B_train, B_val = torch.split(B, [train_batch_size, val_batch_size], dim=0)
-
-    # Always check if ghost computation should be used.
+    A_bf16 = A.to(torch.bfloat16)
+    B_bf16 = B.to(torch.bfloat16)
+    
+    total_bs = A.size(0)
+    train_bs = total_bs - val_batch_size
+    if train_bs <= 0:
+        raise ValueError("No training nodes")
     _should_use_ghost_computation(layer, A, B)
-
-    if A.dim() > 3:
-        raise ValueError("Currently we only expect 3D input tensors (batch, seq_len, features). Extending this to 4D or higher requires additional handling.")
-
-    # --- Compute weight gradient dot product ---
-    if layer.use_ghost_computation:
-        # Sum over the validation batch dimension to get the validation gradient components
-        A_val_sum = torch.sum(A_val, dim=0)
-        B_val_sum = torch.sum(B_val, dim=0)
-
-        # The dot product of gradients G1 and G2 is trace((A1 @ A2.T) * (B1 @ B2.T))
-        # We use torch.matmul which correctly broadcasts the validation tensors across the training batch dimension.
-
-        # start_time = time.time()
-
-        # A_val_sum: [t, d] -> unsqueezed to [1, t, d] for broadcasting
-        # A_train.transpose(-1, -2): [b, d, t]
-        # Result AA: [b, t, t]
-        AA = torch.matmul(A_val_sum.unsqueeze(0), A_train.transpose(-1, -2))
-
-        # B_val_sum: [t, p] -> unsqueezed to [1, t, p]
-        # B_train.transpose(-1, -2): [b, p, t]
-        # Result BB: [b, t, t]
-        BB = torch.matmul(B_val_sum.unsqueeze(0), B_train.transpose(-1, -2))
-
-        # Element-wise product and sum over the two `t` dimensions to get the trace
-        # The result is a tensor of shape [b], with one value per training sample.
-        # layer.weight.grad_dot_prod = torch.sum(AA * BB, dim=[1, 2])
-        layer.weight.grad_dot_prod = torch.sum((AA * BB).float(), dim=[1, 2])
-
-        # torch.cuda.synchronize()  # Ensure all operations are complete
-        # print(f"Prepare Dotprod time for {layer.name}: {(time.time() - start_time)*1000:.4f}ms")
-        # print(f"Debug: Check grad dot product value for Conv1D layer: {layer.weight.grad_dot_prod}")
-
-    else:
-        # Materialize gradients to compute the dot product
-        grad_train = torch.einsum('b...d, b...p->bpd', A_train, B_train).detach()
-        grad_val = torch.einsum('...d, ...p->pd', torch.sum(A_val, dim=0), torch.sum(B_val, dim=0)).detach()
-        layer.weight.grad_dot_prod = torch.einsum('pd,bpd->b', grad_val, grad_train)
-
-    # --- Compute bias gradient dot product ---
-    if layer.bias is not None:
-
-        # For a tensor B of shape [batch, seq_len, features], the per-sample
-        # bias grad is B.sum(dim=1). The total validation grad is B_val.sum(dim=[0, 1]).
-        if B.dim() >= 2:
-            # Sum over all dimensions except the last one (the feature dimension)
-            sum_dims_val = list(range(B_val.dim() - 1))
-            grad_bias_val = B_val.sum(dim=sum_dims_val)
-
-            # For the training batch, we want per-sample gradients, so we only
-            # sum over the sequence/spatial dimensions, not the batch dimension.
-            sum_dims_train = list(range(1, B_train.dim() - 1))
-            grad_bias_train = B_train.sum(dim=sum_dims_train)
-        else: # Should not happen, but as a safeguard
-            grad_bias_train = B_train
-            grad_bias_val = B_val.sum(dim=0)
-
-        # The dot product is a simple einsum between the total validation bias grad
-        # and the per-sample training bias grads.
-        # grad_bias_val shape: [features]
-        # grad_bias_train shape: [batch, features]
-        layer.bias.grad_dot_prod = torch.einsum('p,bp->b', grad_bias_val, grad_bias_train)
-
-
-def _compute_Conv1D_train_grad(
-    layer: transformers.pytorch_utils.Conv1D,
-    A: torch.Tensor,
-    B: torch.Tensor,
-    val_batch_size: int,
-) -> torch.Tensor:
-    """
-    Compute the training gradient for a Conv1D layer's weight and return the
-    averaged gradient across the training batch.
     
-    Args:
-        layer: The Conv1D layer.
-        A: The input activations from the combined (train + val) batch.
-        B: The output gradients from the combined (train + val) batch.
-        val_batch_size: The number of samples in the validation batch.
-    
-    Returns:
-        The averaged gradient for the layer's weight parameter.
-    """
+    A_train, A_val = torch.split(A, [train_bs, val_batch_size], dim=0)
+    B_train, B_val = torch.split(B, [train_bs, val_batch_size], dim=0)
 
-    # Determine training batch size from the total size and validation size.
-    train_batch_size = A.size(0) - val_batch_size
+    #validation gradients
+    grad_val = torch.einsum("nf,np->fp", A_val.sum(dim=0), B_val.sum(dim=0))
 
-    # Isolate the activations and backpropagated gradients for the training data.
-    A_train, _ = torch.split(A, [train_batch_size, val_batch_size], dim=0)
-    B_train, _ = torch.split(B, [train_batch_size, val_batch_size], dim=0)
+    #training gradients
+    grad_train = torch.einsum("nf,np->nfp", A_train, B_train)
 
-    # Compute the summed gradient for the training batch.
-    grad_weight = torch.einsum('b...d,b...p->dp', A_train, B_train)
+    # Frobenius inner product per node
+    layer.lin.weight.grad_dot_prod = torch.einsum("fp,nfp->n", grad_val, grad_train)
 
-    grad_weight /= train_batch_size
+
+def _compute_gcnconv_train_grad(layer, A, B, val_batch_size):
+    train_bs = A.size(0) - val_batch_size
+    if train_bs <= 0:
+        return None
+
+    A_train, _ = torch.split(A, [train_bs, val_batch_size], dim=0)
+    B_train, _ = torch.split(B, [train_bs, val_batch_size], dim=0)
+
+    grad_weight = torch.einsum("nf,np->fp", A_train, B_train)
+    grad_weight /= train_bs
 
     return grad_weight
-
-
-
-
-
-
-def _compute_conv2d_dot_product(
-    layer: nn.Conv2d,
-    A: torch.Tensor,
-    B: torch.Tensor,
-    val_batch_size: int,
-) -> None:
-    """Compute gradient dot-products for nn.Conv2d."""
+def _compute_gatconv_dot_product(layer, A, B, val_batch_size):
 
     A = A.detach()
     B = B.detach()
 
-    A = A.to(torch.bfloat16)
-    B = B.to(torch.bfloat16)
+    total_bs = A.size(0)
+    train_bs = total_bs - val_batch_size
+    if train_bs <= 0:
+        raise ValueError("No training nodes")
 
-    train_batch_size = A.size(0) - val_batch_size
-    if train_batch_size <= 0:
-        raise ValueError("No training samples to compute dot product")
+    A_train, A_val = torch.split(A, [train_bs, val_batch_size], dim=0)
+    B_train, B_val = torch.split(B, [train_bs, val_batch_size], dim=0)
 
-    A_train, A_val = torch.split(A, [train_batch_size, val_batch_size], dim=0)
-    B_train, B_val = torch.split(B, [train_batch_size, val_batch_size], dim=0)
+    grad_val = torch.einsum("nf,np->fp", A_val.sum(dim=0), B_val.sum(dim=0))
+    grad_train = torch.einsum("nf,np->nfp", A_train, B_train)
 
-    unfold_params = dict(
-        kernel_size=layer.kernel_size,
-        dilation=layer.dilation,
-        padding=layer.padding,
-        stride=layer.stride,
+    layer.lin.weight.grad_dot_prod = torch.einsum(
+        "fp,nfp->n", grad_val, grad_train
     )
+def _compute_gatconv_train_grad(layer, A, B, val_batch_size):
+    train_bs = A.size(0) - val_batch_size
+    if train_bs <= 0:
+        return None
 
-    A_train_u = F.unfold(A_train, **unfold_params)
-    A_val_u = F.unfold(A_val, **unfold_params)
+    A_train, _ = torch.split(A, [train_bs, val_batch_size], dim=0)
+    B_train, _ = torch.split(B, [train_bs, val_batch_size], dim=0)
 
-    B_train_r = B_train.reshape(B_train.size(0), B_train.size(1), -1)
-    B_val_r = B_val.reshape(B_val.size(0), B_val.size(1), -1)
-
-    _should_use_ghost_computation(layer, A_train_u, B_train_r, conv=True)
-
-    if layer.use_ghost_computation:
-        A_val_sum = torch.sum(A_val_u, dim=0)
-        B_val_sum = torch.sum(B_val_r, dim=0)
-        AA = torch.matmul(A_val_sum.unsqueeze(0), A_train_u.transpose(1, 2))
-        BB = torch.matmul(B_val_sum.unsqueeze(0), B_train_r.transpose(1, 2))
-        layer.weight.grad_dot_prod = torch.sum((AA * BB).float(), dim=[1, 2])
-    else:
-        grad_train = torch.einsum('bik,bpk->bpi', A_train_u, B_train_r)
-        grad_val = torch.einsum('ik,pk->pi', A_val_u.sum(dim=0), B_val_r.sum(dim=0))
-        layer.weight.grad_dot_prod = torch.einsum('pi,bpi->b', grad_val, grad_train)
-
-    if layer.bias is not None:
-        grad_bias_val = B_val_r.sum(dim=[0, 2])
-        grad_bias_train = B_train_r.sum(dim=2)
-        layer.bias.grad_dot_prod = torch.einsum('p,bp->b', grad_bias_val, grad_bias_train)
-
-
-def _compute_conv2d_train_grad(
-    layer: nn.Conv2d,
-    A: torch.Tensor,
-    B: torch.Tensor,
-    val_batch_size: int,
-) -> torch.Tensor:
-    """Compute averaged training gradients for nn.Conv2d weight."""
-
-    train_batch_size = A.size(0) - val_batch_size
-    A_train, _ = torch.split(A, [train_batch_size, val_batch_size], dim=0)
-    B_train, _ = torch.split(B, [train_batch_size, val_batch_size], dim=0)
-
-    unfold_params = dict(
-        kernel_size=layer.kernel_size,
-        dilation=layer.dilation,
-        padding=layer.padding,
-        stride=layer.stride,
-    )
-
-    A_u = F.unfold(A_train, **unfold_params)
-    B_r = B_train.reshape(B_train.size(0), B_train.size(1), -1)
-
-    grad_weight = torch.einsum('bik,bpk->pi', A_u, B_r)
-    grad_weight = grad_weight.view_as(layer.weight)
-    grad_weight /= train_batch_size
+    grad_weight = torch.einsum("nf,np->fp", A_train, B_train)
+    grad_weight /= train_bs
 
     return grad_weight
-
 
 
 _supported_layers_dotprod = {
     nn.Linear: (_compute_linear_dot_product, _compute_linear_train_grad),
-    nn.Embedding: (_compute_embedding_dot_product, _compute_embedding_train_grad),
     nn.LayerNorm: (_compute_layernorm_dot_product, _compute_layernorm_train_grad),
-    transformers.pytorch_utils.Conv1D: (_compute_Conv1D_dot_product, _compute_Conv1D_train_grad),
-    nn.Conv2d: (_compute_conv2d_dot_product, _compute_conv2d_train_grad),
+    GCNConv: (_compute_gcnconv_dot_product, _compute_gcnconv_train_grad),
+    GATConv: (_compute_gatconv_dot_product, _compute_gatconv_train_grad),
 }
