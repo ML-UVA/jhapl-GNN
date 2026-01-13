@@ -250,9 +250,21 @@ if __name__ == "__main__":
         log_to_file("Please run your Spatial Split and Stitching scripts now.")
         exit()
 
+# ... in main.py ...
     log_to_file("Loading Data...")
     x_global = torch.load(PATH_X, weights_only=False)
-    # Load edges to CPU to allow GraphSAINT sampling
+    
+    # --- FEATURE SELECTION: KEEP ONLY 6 ---
+    # Index Mapping:
+    # 0: Soma_Vol, 1: Total_Vol, 2: Total_Len
+    # 3: Soma_X,   4: Soma_Y,    5: Soma_Z    <-- DROPPING THESE
+    # 6: Centr_X,  7: Centr_Y,   8: Centr_Z
+    
+    features_to_keep = [0, 1, 2, 6, 7, 8]
+    x_global = x_global[:, features_to_keep]
+    
+    log_to_file(f"TRAINING ON REDUCED SUBSET: {x_global.shape[1]} Features")
+    # --------------------------------------    # Load edges to CPU to allow GraphSAINT sampling
     train_edges = torch.load(PATH_TRAIN_EDGES, weights_only=False).cpu()
     test_edges = torch.load(PATH_TEST_EDGES, weights_only=False).cpu()
 
