@@ -7,7 +7,7 @@
 /*saved_models
 /__pycache__
 /cache_data
-/processed_edges
+/processed_edges_dict
 *.json
 *.pth
 *.npy
