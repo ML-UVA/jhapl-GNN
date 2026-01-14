@@ -250,14 +250,14 @@ if __name__ == "__main__":
         log_to_file("Please run your Spatial Split and Stitching scripts now.")
         exit()
 
-# ... in main.py ...
+
     log_to_file("Loading Data...")
     x_global = torch.load(PATH_X, weights_only=False)
     
     # --- FEATURE SELECTION: KEEP ONLY 6 ---
     # Index Mapping:
     # 0: Soma_Vol, 1: Total_Vol, 2: Total_Len
-    # 3: Soma_X,   4: Soma_Y,    5: Soma_Z    <-- DROPPING THESE
+    # 3: Soma_X,   4: Soma_Y,    5: Soma_Z    <-- DROPPING THESE because it is redundant data(centroids cover the feature)
     # 6: Centr_X,  7: Centr_Y,   8: Centr_Z
     
     features_to_keep = [0, 1, 2, 6, 7, 8]
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     log_to_file("Running comprehensive analysis on Test set (Large Sample)...")
     
     # We take a larger sample for the final report to get stable metrics
-    # Note: 15,000 nodes gives us decent coverage for the confusion matrix
+    # 15,000 nodes gives us decent coverage for the confusion matrix
     local_edge_index, node_indices = get_random_subgraph(test_edges, x_global.size(0), sample_size=15000)
     
     local_edge_index = local_edge_index.to(device)
