@@ -1,0 +1,12 @@
+# Ignore everything in data/
+data/*
+
+# Keep the folders themselves
+!data/.gitkeep
+!data/graph_exports/
+
+# Ignore everything inside graph_exports
+data/graph_exports/*
+!data/graph_exports/.gitkeep
+.ipynb_checkpoints/
+__pycache__/

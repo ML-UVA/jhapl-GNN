@@ -1,18 +1,23 @@
-Onboarding Project:
-
-This project synthetically generates a map of mountains and uses a GNN to classify which nodes are mountain peaks and which ones are not.
-
-Hyperparameter tuning:
-
-We tested the following hyperparameter configurations:
-
-dims    learning rate     training_acc      testing_acc
-
-[8,2]      0.01               0.998            0.998
-[16,2]     0.01               0.998            0.998
-[32, 2]    0.01               0.998            0.998
-[16,16,2]  0.01               0.998            0.998
-[16, 2]    0.005              0.998            0.998
+# Neuron and Morphology Graph Analyzation
 
 
-All models, no matter the hyperparameter configuration, achieved very similar accuracies on both testing/training. This means that our models is very generliazable. Since the accuracy did not change despite making architecture deeper, we can see that even a shallower GNN can learn patterns in this task. Similariy, since decreasing learning rate did not improve performance, we can confirm the simplicity of the task. 
+## Setup
+This repository contains tools and analyses for studying neuronal morphology using graph-based representations.
+
+The analyses assume that neuron morphologies are stored as NetworkX graph objects located in data/graph_exports/. These graphs encode morphological structure along with additional node- and edge-level features. These graph objects were stored as .pbz2 files.
+
+Ex: 86491134110093308_0_auto_proof_v7_proofread.pbz2
+
+The datasets used to develop and validate these analyses were sourced from the MICrONS project and processed through NEURD for automated proofreading and structural refinement.
+
+Each .py and .pynb file should be ran directly from the root directory. All data generated from the pipeline and analyzes are stored in the data folder.
+
+## Project Structure:
+
+```text
+data/
+├── ADP/    # Calculated Axon-Dendrite proximity between every pair of neuron
+├── Community Detection/        # Detects communities in neuron graph
+├── Visualization/          # Visualization Tools
+├── datao      # Stores all data and checkpoint data
+```
