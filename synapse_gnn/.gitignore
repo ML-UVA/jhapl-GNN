@@ -4,7 +4,7 @@
 /stage3_requirements.txt
 /graph_exports
 /*.pt
-/*saved_models
+/saved_models
 /__pycache__
 /cache_data
 /processed_edges_dict
@@ -13,3 +13,4 @@
 *.npy
 /cache_spatial
 /spatial_training/__pycache__
+/saved_models_spatial

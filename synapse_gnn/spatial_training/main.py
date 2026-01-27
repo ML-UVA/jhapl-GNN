@@ -12,7 +12,7 @@ import gnn  # Your GNN model
 # FOLDERS
 CACHE_DIR = "cache_spatial"       # Separate folder for spatial split data
 OUTPUT_FOLDER = "saved_models_spatial"
-LOG_FILE = os.path.join(CACHE_DIR, "training_log_spatial.txt")
+LOG_FILE = os.path.join(CACHE_DIR, "training_log_spatial_v2.txt")
 
 # RAW DATA LOCATION (Where your .pbz2 files are)
 RAW_GRAPH_DIR = "graph_exports/"  
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     # 3: Soma_X,   4: Soma_Y,    5: Soma_Z    <-- DROPPING THESE because it is redundant data(centroids cover the feature)
     # 6: Centr_X,  7: Centr_Y,   8: Centr_Z
     
-    features_to_keep = [0, 1, 2, 6, 7, 8]
+    features_to_keep = [6, 7, 8]
     x_global = x_global[:, features_to_keep]
     
     log_to_file(f"TRAINING ON REDUCED SUBSET: {x_global.shape[1]} Features")
