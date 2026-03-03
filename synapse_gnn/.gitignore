@@ -14,3 +14,4 @@
 /cache_spatial
 /spatial_training/__pycache__
 /saved_models_spatial
+*.png
