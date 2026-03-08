@@ -9,9 +9,11 @@
 /cache_data
 /processed_edges_dict
 *.json
+!config.json
 *.pth
 *.npy
 /cache_spatial
 /spatial_training/__pycache__
 /saved_models_spatial
 *.png
+/spatial_training.egg-info

@@ -1,36 +1,48 @@
-import sys
 import os
+import json
+import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import roc_auc_score
 
-# --- 1. ROBUST PATH SETUP ---
-# Get the absolute path to spatial_training directory
+from spatial_training import gnn
+from spatial_training.train_and_eval import get_random_subgraph 
+
+# --- 2. CONFIGURATION LOADER ---
+# Set the default config path relative to this script's location
 current_file = os.path.abspath(__file__)
 visualization_scripts_dir = os.path.dirname(current_file)
 spatial_training_dir = os.path.dirname(visualization_scripts_dir)
 synapse_gnn_dir = os.path.dirname(spatial_training_dir)
+default_config_path = os.path.join(synapse_gnn_dir, "config.json")
 
-# Add spatial_training to path so we can import gnn and main
-if spatial_training_dir not in sys.path:
-    sys.path.insert(0, spatial_training_dir)
+parser = argparse.ArgumentParser(description="Visualize GNN Model Metrics")
+parser.add_argument('--config', type=str, default=default_config_path, help="Path to config file")
+args, _ = parser.parse_known_args()
 
-import gnn
-from main import get_random_subgraph
+config_path = os.path.abspath(args.config)
+print(f"Loading configuration from: {config_path}")
+with open(config_path, 'r') as f:
+    config = json.load(f)
 
-# --- 2. CONFIGURATION (Using Absolute Paths) ---
-CACHE_DIR = os.path.join(synapse_gnn_dir, "cache_spatial")
-MODEL_OUTPUT_FOLDER = os.path.join(synapse_gnn_dir, "saved_models_spatial")
-OUTPUT_FOLDER = os.path.join(spatial_training_dir, "8_feature_model_evaluations")
+# --- 3. ROBUST PATH SETUP ---
+# Map paths from config (Resolving relative to the config file's location)
+config_dir = os.path.dirname(config_path)
+CACHE_DIR = os.path.normpath(os.path.join(config_dir, config["paths"]["data_dir"]))
+MODEL_OUTPUT_FOLDER = os.path.normpath(os.path.join(config_dir, config["paths"]["model_out"]))
+OUTPUT_FOLDER = os.path.join(spatial_training_dir, "best_model_spatial_evals")
 
 # File Paths
 PATH_X = os.path.join(CACHE_DIR, "x_features.pt")
 PATH_TEST_EDGES = os.path.join(CACHE_DIR, "graph_test_edges.pt")
 PATH_TRAIN_EDGES = os.path.join(CACHE_DIR, "graph_train_edges.pt")
-PATH_TEST_CANDS = os.path.join(CACHE_DIR, "graph_test_spatial_candidates.pt") # <-- THE NEW CANDIDATES
-MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, "morphology_8_feature_model.pth")
+PATH_TEST_CANDS = os.path.join(CACHE_DIR, "graph_test_spatial_candidates.pt")
+
+# Graph name inference for dynamic model loading
+graph_name = os.path.splitext(config["paths"]["input_nx_graph"])[0]
+MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}.pth")
 
 # Verify paths exist
 print(f"Cache Directory: {CACHE_DIR}")
@@ -44,7 +56,7 @@ if not os.path.exists(MODEL_PATH):
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 print(f"Output Directory: {OUTPUT_FOLDER}\n")
 
-# --- 2. LOAD DATA ---
+# --- 4. LOAD DATA ---
 print("Loading data...")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -63,8 +75,7 @@ test_cands = torch.load(PATH_TEST_CANDS, weights_only=False).cpu()
 
 print(f"Loaded {test_cands.size(1):,} Spatial Candidates for evaluation.")
 
-# --- 3. LOAD MODEL ---
-import gnn # Adjust if your gnn.py is located elsewhere
+# --- 5. LOAD MODEL ---
 print(f"Loading Morphology Model from {MODEL_PATH}...")
 model = gnn.SynapsePredictor(in_channels=8, hidden_channels=128).to(device)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=False))
@@ -135,7 +146,9 @@ def calculate_auc(z, pos_edges, neg_edges):
 def analyze_feature_importance():
     print("\nRunning Analysis 1: Feature Importance (via Hard Negatives)...")
     
-    local_pos, local_neg, node_indices = get_eval_subgraph(test_edges, test_cands, x_global_raw.size(0), sample_size=15000)
+    # Use config sample sizes for evaluation
+    eval_sample_size = config["evaluation"]["test_node_sample_size"]
+    local_pos, local_neg, node_indices = get_eval_subgraph(test_edges, test_cands, x_global_raw.size(0), sample_size=eval_sample_size)
     batch_x = x_global_raw[node_indices][:, morph_indices]
     
     z_base = get_inductive_embeddings(batch_x, node_indices)
@@ -158,7 +171,7 @@ def analyze_feature_importance():
         
     plt.figure(figsize=(12, 7))
     sns.barplot(x=importances, y=morph_names, palette="magma")
-    plt.title("Feature Importance (Measured by AUC Drop on 50µm Candidates)", fontsize=14)
+    plt.title(f"Feature Importance ({graph_name} Graph Candidates)", fontsize=14)
     plt.xlabel("Drop in ROC-AUC (Higher = More Important)", fontsize=12)
     plt.axvline(0, color='k', linestyle='--', alpha=0.5)
     plt.tight_layout()
@@ -169,7 +182,8 @@ def analyze_feature_importance():
 def analyze_distance_vs_prob():
     print("\nRunning Analysis 2: Distance vs Probability Check...")
     
-    local_pos, local_neg, node_indices = get_eval_subgraph(test_edges, test_cands, x_global_raw.size(0), sample_size=10000)
+    eval_sample_size = config["evaluation"]["test_node_sample_size"]
+    local_pos, local_neg, node_indices = get_eval_subgraph(test_edges, test_cands, x_global_raw.size(0), sample_size=eval_sample_size)
     
     batch_x_morph = x_global_raw[node_indices][:, morph_indices] 
     batch_x_spatial = x_global_raw[node_indices][:, spatial_indices] 
@@ -181,8 +195,7 @@ def analyze_distance_vs_prob():
     dists_real = torch.norm(batch_x_spatial[pos_src] - batch_x_spatial[pos_dst], dim=1).numpy()
     probs_real = (z[pos_src.to(device)] * z[pos_dst.to(device)]).sum(dim=1).sigmoid().cpu().numpy()
     
-    # 2. Hard Negatives (Red) - These are already strictly < 50µm!
-    # Downsample negatives just for plot clarity
+    # 2. Hard Negatives (Red)
     num_plot = min(len(pos_src) * 3, local_neg.size(1))
     neg_src, neg_dst = local_neg[0, :num_plot], local_neg[1, :num_plot]
     
@@ -190,11 +203,11 @@ def analyze_distance_vs_prob():
     probs_neg = (z[neg_src.to(device)] * z[neg_dst.to(device)]).sum(dim=1).sigmoid().cpu().numpy()
     
     plt.figure(figsize=(10, 8))
-    plt.scatter(dists_neg, probs_neg, alpha=0.3, color='red', s=15, label="50µm Hard Negatives")
+    plt.scatter(dists_neg, probs_neg, alpha=0.3, color='red', s=15, label="Structural Candidates (False Positives)")
     plt.scatter(dists_real, probs_real, alpha=0.5, color='green', s=20, label="True Synapses")
     
     plt.title("Model Confidence vs. True Euclidean Distance", fontsize=14)
-    plt.xlabel("Euclidean Distance in Microns (Hidden from Model)", fontsize=12)
+    plt.xlabel("Euclidean Distance in Microns", fontsize=12)
     plt.ylabel("Predicted Probability", fontsize=12)
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -205,7 +218,8 @@ def analyze_distance_vs_prob():
 def analyze_volume_impact():
     print("\nRunning Analysis 3: Volume Impact...")
     
-    local_pos, _, node_indices = get_eval_subgraph(test_edges, test_cands, x_global_raw.size(0), sample_size=10000)
+    eval_sample_size = config["evaluation"]["test_node_sample_size"]
+    local_pos, _, node_indices = get_eval_subgraph(test_edges, test_cands, x_global_raw.size(0), sample_size=eval_sample_size)
     batch_x_morph = x_global_raw[node_indices][:, morph_indices]
     
     z = get_inductive_embeddings(batch_x_morph, node_indices)

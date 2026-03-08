@@ -1,58 +1,65 @@
 import json
-import math
 import os
-from datasci_tools import system_utils as su
+import numpy as np
+from scipy.spatial import KDTree
 
+# --- CONFIGURATION ---
+DISTANCE_THRESHOLD_NM = 100_000 
+CACHE_DIR = "cache_spatial" # Points to your symlink
 
-with open('synapses.json', 'r') as file:
-    data = json.load(file)
-print(len(data))
-nodes = set()
-edges = set()
-for synid in data:
-    nodes.add(data[synid][0][0])
-    nodes.add(data[synid][0][1])
-    edges.add((data[synid][0][0], data[synid][0][1]))
-position = dict()
-for node in nodes:
-    try:
-        G = su.decompress_pickle(f"./graph_exports/{node}_0_auto_proof_v7_proofread.pbz2")
-    except:
-        G = su.decompress_pickle(f"./graph_exports/{node}_1_auto_proof_v7_proofread.pbz2")
-    position[node] = G.nodes["S0"]["mesh_center"]
-for node in nodes:
-    try:
-        G = su.decompress_pickle(f"./graph_exports/{node}_0_auto_proof_v7_proofread.pbz2")
-    except:
-        G = su.decompress_pickle(f"./graph_exports/{node}_1_auto_proof_v7_proofread.pbz2")
-    print(G.nodes["S0"])
-    break
-names = set(os.listdir("./graph_exports/"))
-print(os.listdir("/p/mlatuva/jhu-graph/avery/jhapl-GNN/"))
-for node in nodes:
-    tot = 0
-    tot += int(f"./graph_exports/{node}_0_auto_proof_v7_proofread.pbz2" in names)
-    tot += int(f"./graph_exports/{node}_1_auto_proof_v7_proofread.pbz2" in names)
-    if tot == 1:
-        print(node)
-with open("positions.json", "r") as f:
-    position = json.load(f)
-def distance(x1, y1, z1, x2, y2, z2):
-    def d2(a, b):
-        return (a-b)**2
-    return math.sqrt(d2(x1, x2)+d2(y1, y2)+d2(z1, z2))
-adjacency = {x: [] for x in nodes}
-negative = 0
-nodes = list(nodes)
-print(nodes)
-for i, node in enumerate(nodes):
-    for j in range(i+1, len(nodes)):
-        # Checks if distance is less than or equal to 1 million nanometers(default units of the dataset) which is 1mm.
-        if distance(*position[str(node)], *position[str(nodes[j])]) <= 1e6:
-            adjacency[node].append(nodes[j])
-            adjacency[nodes[j]].append(node)
-        else:
-            negative += 1
-print(negative)
-with open("adjacency.json", "w") as f:
-    json.dump(adjacency, f)
+def main():
+    print("Loading synapses and positions...")
+    
+    # 1. Load Synapses
+    synapses_path = os.path.join(CACHE_DIR, 'synapses.json')
+    with open(synapses_path, 'r') as file:
+        synapse_data = json.load(file)
+
+    nodes_in_synapses = set()
+    for synid in synapse_data:
+        nodes_in_synapses.add(str(synapse_data[synid][0][0]))
+        nodes_in_synapses.add(str(synapse_data[synid][0][1]))
+
+    # 2. Load Positions
+    positions_path = os.path.join(CACHE_DIR, 'positions.json')
+    with open(positions_path, "r") as f:
+        all_positions = json.load(f)
+
+    # 3. Filter valid nodes
+    valid_nodes = [n for n in nodes_in_synapses if n in all_positions]
+    print(f"Total valid neurons for spatial graph: {len(valid_nodes)}")
+
+    # 4. Build KD-Tree
+    print(f"Building KD-Tree (Threshold: {DISTANCE_THRESHOLD_NM / 1000} µm)...")
+    coords = np.array([all_positions[n] for n in valid_nodes])
+    tree = KDTree(coords)
+
+    # 5. Query pairs
+    pairs = tree.query_pairs(DISTANCE_THRESHOLD_NM)
+
+    # 6. Build Adjacency Dictionary
+    adjacency = {n: [] for n in valid_nodes}
+    for i, j in pairs:
+        node_i = valid_nodes[i]
+        node_j = valid_nodes[j]
+        adjacency[node_i].append(node_j)
+        adjacency[node_j].append(node_i)
+
+    # 7. Print Stats and Save
+    total_possible_edges = (len(valid_nodes) * (len(valid_nodes) - 1)) // 2
+    edges_kept = len(pairs)
+    negative = total_possible_edges - edges_kept
+
+    print(f"Edges kept (Candidates for synapses): {edges_kept:,}")
+    print(f"Edges rejected (Too far apart): {negative:,}")
+
+    # Save directly to the cache folder
+    output_path = os.path.join(CACHE_DIR, "adjacency.json")
+    print(f"Saving to {output_path}...")
+    with open(output_path, "w") as f:
+        json.dump(adjacency, f)
+        
+    print("Done! You are ready to run your chunking script.")
+
+if __name__ == "__main__":
+    main()
