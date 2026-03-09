@@ -11,16 +11,24 @@ from neuron_morphology_tools import neuron_nx_stats as nxs
 # ---------------------------------------------------------
 # HELPER: Get IDs from folder
 # ---------------------------------------------------------
-def get_neuron_ids_from_folder(graph_dir):
-    """Scans the folder and returns a list of neuron IDs based on filenames."""
-    if not os.path.exists(graph_dir):
-        return []
+def get_neuron_ids_from_folder(neurons_directory):
+    print(f"Scanning directory for neuron files: {neurons_directory}")
+    valid_ids = set()
     
-    files = [f for f in os.listdir(graph_dir) if f.endswith(".pbz2")]
-    # Assuming filename format: "864691134884749562_0_auto_proof_v7_proofread.pbz2"
-    ids = [f.split("_")[0] for f in files]
-    return sorted(list(set(ids)))
-
+    for filename in os.listdir(neurons_directory):
+        if filename.endswith(".pbz2"):
+            
+            # THE FIX: Split by "_auto_proof" to drop the suffix.
+            # Example: "864691134884749562_1_auto_proof_v7_proofread.pbz2"
+            # Becomes exact ID your teammate uses: "864691134884749562_1"
+            clean_id = filename.split('_auto_proof')[0]
+            
+            valid_ids.add(clean_id)
+            
+    sorted_valid_ids = sorted(list(valid_ids))
+    
+    print(f"Found {len(sorted_valid_ids):,} unique neurons (Split indices isolated).")
+    return sorted_valid_ids
 # ---------------------------------------------------------
 # HELPER: Soma Detection
 # ---------------------------------------------------------
@@ -35,7 +43,10 @@ def get_valid_soma_id(G):
 # ---------------------------------------------------------
 def process_single_neuron(args):
     i, n_id, graph_dir = args
-    filename = f"{n_id}_0_auto_proof_v7_proofread.pbz2" 
+    
+    # THE FIX: Dynamically reconstruct the filename using the clean ID
+    # This prevents hardcoding the _0 so it correctly opens _1 files too!
+    filename = f"{n_id}_auto_proof_v7_proofread.pbz2" 
     path = os.path.join(graph_dir, filename)
     
     if not os.path.exists(path): return None
@@ -132,9 +143,9 @@ def process_single_neuron(args):
         return (i, feats)
         
     except Exception as e:
-        # print(f"Failed on {n_id}: {e}") 
+        print(f"Failed on {n_id}: {e}") 
         return None
-# ---------------------------------------------------------
+    # ---------------------------------------------------------
 # MAIN BUILDER
 # ---------------------------------------------------------
 def build_node_features(neuron_ids, graph_dir, num_workers=None):
