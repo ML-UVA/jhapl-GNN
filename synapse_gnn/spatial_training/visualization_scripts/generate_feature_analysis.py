@@ -32,7 +32,7 @@ with open(config_path, 'r') as f:
 config_dir = os.path.dirname(config_path)
 CACHE_DIR = os.path.normpath(os.path.join(config_dir, config["paths"]["data_dir"]))
 MODEL_OUTPUT_FOLDER = os.path.normpath(os.path.join(config_dir, config["paths"]["model_out"]))
-OUTPUT_FOLDER = os.path.join(spatial_training_dir, "best_model_spatial_evals")
+OUTPUT_FOLDER = os.path.normpath(os.path.join(config_dir, config["paths"]["visualization_output"]))
 
 # File Paths
 PATH_X = os.path.join(CACHE_DIR, "x_features.pt")
@@ -42,7 +42,8 @@ PATH_TEST_CANDS = os.path.join(CACHE_DIR, "graph_test_spatial_candidates.pt")
 
 # Graph name inference for dynamic model loading
 graph_name = os.path.splitext(config["paths"]["input_nx_graph"])[0]
-MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}.pth")
+thresh_nm = config["graph_generation"]["spatial_threshold_nm"]
+MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}_{thresh_nm}nm.pth")
 
 # Verify paths exist
 print(f"Cache Directory: {CACHE_DIR}")
