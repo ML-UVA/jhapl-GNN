@@ -225,7 +225,7 @@ def main():
     patience_counter = 0
     patience_limit = 10 
     
-    # FIX: Unique model path including threshold
+    # Unique model path including threshold
     MODEL_SAVE_PATH = os.path.join(model_out, f"best_model_{graph_type}_{thresh_nm}nm.pth")
     
     for epoch in range(1, config["training"]["epochs"] + 1):

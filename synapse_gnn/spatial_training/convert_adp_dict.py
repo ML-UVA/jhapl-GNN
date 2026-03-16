@@ -64,17 +64,18 @@ def convert_adp_directly_to_pytorch():
     idx = 0
     skipped_edges = 0
 
-    # STEP B: Fill arrays (Axon -> Dendrite)
+# STEP B: Fill arrays (Axon -> Dendrite)
     print("Parsing dictionary and mapping IDs...")
     for dst_bio_id, axons in adp_dict.items(): 
-        # Biological IDs from teammate often have _0 or _axon suffixes
-        dst_str = str(dst_bio_id).split('_')[0]
+
+        dst_str = str(dst_bio_id)
         
         if dst_str in id_to_idx:
             dst_pt_idx = id_to_idx[dst_str]
             
             for src_bio_id in axons: 
-                src_str = str(src_bio_id).split('_')[0]
+                
+                src_str = str(src_bio_id)
                 
                 if src_str in id_to_idx:
                     src_arr[idx] = id_to_idx[src_str]
@@ -84,6 +85,7 @@ def convert_adp_directly_to_pytorch():
                     skipped_edges += 1
         else:
             skipped_edges += len(axons)
+
 
     print(f"\nData parsed successfully:")
     print(f"  -> Total Aligned Edges: {idx:,}")
