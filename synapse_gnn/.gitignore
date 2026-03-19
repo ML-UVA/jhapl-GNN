@@ -17,3 +17,4 @@
 /saved_models_spatial
 *.png
 /spatial_training.egg-info
+*.txt

@@ -266,20 +266,20 @@ def main():
                 test_edges, test_cands, num_nodes_total, sample_size=config["evaluation"]["test_node_sample_size"])
             if local_test_edges.size(1) == 0: continue
             
-            subset_mask = torch.zeros(num_nodes_total, dtype=torch.bool)
-            subset_mask[node_indices] = True
-            train_row, train_col = train_edges
-            edge_mask = subset_mask[train_row] & subset_mask[train_col]
-            batch_train_edges = train_edges[:, edge_mask]
+            # --- FIXED INDUCTIVE MESSAGE PASSING ---
+            num_edges = local_test_edges.size(1)
+            perm = torch.randperm(num_edges, device=device)
+            split_idx = int(num_edges * 0.5)
             
-            node_idx_map = torch.full((num_nodes_total,), -1, dtype=torch.long)
-            node_idx_map[node_indices] = torch.arange(len(node_indices))
-            local_train_edges = torch.stack([node_idx_map[batch_train_edges[0]], node_idx_map[batch_train_edges[1]]], dim=0).to(device)
-
+            # Use 50% of the test edges to build context, predict on the other 50%
+            msg_edges = local_test_edges[:, perm[split_idx:]].to(device)
+            target_edges = local_test_edges[:, perm[:split_idx]].to(device)
+            
             batch_x = x_global_raw[node_indices, :num_features].to(device)
-            z = model.encode(batch_x, local_train_edges)
+            z = model.encode(batch_x, msg_edges) # Model now actually sees the graph!
             
-            pos_src, pos_dst = local_test_edges[0], local_test_edges[1]
+            # Update pos_src and pos_dst to use the target_edges we just created
+            pos_src, pos_dst = target_edges[0], target_edges[1]            
             num_pos = pos_src.size(0)
             num_cands = local_test_cands.size(1)
             

@@ -19,3 +19,5 @@ ipython_genutils
 datasci-stdlib-tools
 tdqm
 git+https://github.com/reimerlab/neuron_morphology_tools.git
+seaborn
+umap

@@ -9,14 +9,15 @@
         "visualization_output": "evals_adp_graph_30000nm"
     },
     "graph_generation": {
-        "spatial_threshold_nm": 30000
+        "spatial_threshold_nm": 30000,
+        "adp_threshold": 0.0
     },
     "graph_conversion": {
         "make_undirected": true
     },
     "spatial_split": {
-        "train_cluster_size": 20000,
-        "test_cluster_size": 6000
+        "train_cluster_size": 35000,
+        "test_cluster_size": 15000
     },
     "architecture": {
         "in_channels": 8,
@@ -29,13 +30,10 @@
         "train_node_sample_size": 8000,
         "validation_averaging_runs": 5,
         "validation_node_sample_size": 8000,
-        "log_file_name": "training_log_adp_10000_30000nm.txt"
+        "log_file_name": "training_log_adp_sweep.txt"
     },
     "evaluation": {
         "test_node_sample_size": 25000,
         "test_aggregation_runs": 10
-    },
-    "logging": {
-        "log_file_name": "training_log_adp_graph_30000nm.txt"
     }
 }

@@ -66,15 +66,24 @@ def convert_adp_directly_to_pytorch():
 
 # STEP B: Fill arrays (Axon -> Dendrite)
     print("Parsing dictionary and mapping IDs...")
-    for dst_bio_id, axons in adp_dict.items(): 
-
+    
+    # NEW: Define your threshold (can also be passed via config)
+    ADP_THRESHOLD = config["graph_generation"]["adp_threshold"]
+    
+    for dst_bio_id, axons_dict in adp_dict.items(): 
         dst_str = str(dst_bio_id)
         
         if dst_str in id_to_idx:
             dst_pt_idx = id_to_idx[dst_str]
             
-            for src_bio_id in axons: 
+            # FIXED: Iterate through .items() to handle the nested dictionary
+            for src_bio_id, adp_weight in axons_dict.items(): 
                 
+                # Apply the threshold natively!
+                if adp_weight < ADP_THRESHOLD:
+                    skipped_edges += 1
+                    continue
+                    
                 src_str = str(src_bio_id)
                 
                 if src_str in id_to_idx:
@@ -84,7 +93,7 @@ def convert_adp_directly_to_pytorch():
                 else:
                     skipped_edges += 1
         else:
-            skipped_edges += len(axons)
+            skipped_edges += len(axons_dict)
 
 
     print(f"\nData parsed successfully:")

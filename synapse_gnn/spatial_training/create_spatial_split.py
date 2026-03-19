@@ -27,6 +27,8 @@ def generate_spatial_split():
     CACHE_DIR = config["paths"]["data_dir"]
     TRAIN_SIZE = config["spatial_split"]["train_cluster_size"]
     TEST_SIZE = config["spatial_split"]["test_cluster_size"]
+
+    SPATIAL_OFFSET = config["graph_generation"]["spatial_threshold_nm"]
     
     # 1. Load Data
     x_features = torch.load(os.path.join(CACHE_DIR, "x_features.pt"), weights_only=False)
@@ -65,11 +67,11 @@ def generate_spatial_split():
     center_of_synapses = np.median(syn_locations, axis=0)
     print(f"Synapse Center of Mass (Midpoints): {center_of_synapses}")
 
-    # 4. Grow Clusters (The rest of the logic remains the same)
+    # 4. Grow Clusters 
     train_seed = center_of_synapses.copy()
-    train_seed[0] -= 10000  # Shift 10um Left
+    train_seed[0] -= SPATIAL_OFFSET  # Shift 10um Left
     test_seed = center_of_synapses.copy()
-    test_seed[0] += 10000   # Shift 10um Right
+    test_seed[0] += SPATIAL_OFFSET   # Shift 10um Right
 
     nbrs = NearestNeighbors(n_neighbors=max(TRAIN_SIZE, TEST_SIZE)).fit(coords)
     _, train_indices = nbrs.kneighbors(train_seed.reshape(1, -1))

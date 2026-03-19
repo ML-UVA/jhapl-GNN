@@ -51,7 +51,7 @@ def plot_both_sweeps():
     plt.ylabel("ROC-AUC Score", fontsize=14)
     
     # Zoom in to perfectly highlight the 0.75 - 0.85 stability band
-    plt.ylim(0.70, 0.85)
+    plt.ylim(0.70, 0.99)
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.legend(loc='lower right', fontsize=12)
     

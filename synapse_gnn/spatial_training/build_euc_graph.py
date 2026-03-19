@@ -24,7 +24,7 @@ def build_euclidean_nx_graph():
     config = load_config(args.config)
     
     CACHE_DIR = config["paths"]["data_dir"]
-    SPATIAL_THRESHOLD = config["graph_generation"]["spatial_threshold_nm"]
+    SPATIAL_THRESHOLD = 100000
     
     PATH_X = os.path.join(CACHE_DIR, "x_features.pt")
     # Dynamically name the output based on the config to ensure it matches

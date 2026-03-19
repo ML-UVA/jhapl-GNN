@@ -28,8 +28,13 @@ def split_and_stitch():
     SYNAPSES_FILE = os.path.join(CACHE_DIR, "synapses.json")
     PATH_INDICES   = os.path.join(CACHE_DIR, "node_mapping.json") 
     PATH_MASKS     = os.path.join(CACHE_DIR, "spatial_split_masks.pt")
-    PATH_EDGES     = os.path.join(CACHE_DIR, "adp_base_edges.pt")
-
+    # DYNAMIC GRAPH PATHING
+    graph_type = os.path.splitext(config["paths"]["input_nx_graph"])[0]
+    if "adp" in graph_type.lower():
+        PATH_EDGES = os.path.join(CACHE_DIR, "adp_base_edges.pt")
+    else:
+        # Assumes your Euclidean adapter outputs to base_edges.pt
+        PATH_EDGES = os.path.join(CACHE_DIR, "base_edges.pt")
     # OUTPUTS
     TRAIN_POS_PATH = os.path.join(CACHE_DIR, "graph_train_edges.pt")
     TEST_POS_PATH  = os.path.join(CACHE_DIR, "graph_test_edges.pt")
