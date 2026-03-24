@@ -1,6 +1,40 @@
+"""
+Non-spatial random graph generators.
+
+Implements classical random graph models commonly used as null models:
+Erdős-Rényi, Configuration Model, Barabási-Albert, and Watts-Strogatz.
+All functions return directed graphs as adjacency lists.
+"""
+
 import random
 
+
 def erdos_renyi_directed(n, p, seed=None, self_loops=False):
+    """
+    Generate Erdős-Rényi random directed graph.
+
+    Each possible directed edge exists independently with probability p.
+    Produces graphs with Poisson degree distributions, uniformly random structure.
+
+    Parameters
+    ----------
+    n : int
+        Number of nodes.
+
+    p : float
+        Edge probability, in range [0, 1].
+
+    seed : int, optional
+        Random seed for reproducibility.
+
+    self_loops : bool, optional
+        If True, allow self-loops. Default: False.
+
+    Returns
+    -------
+    dict
+        Adjacency list: {node_id: [list of neighbors]}.
+    """
     if seed is not None:
         random.seed(seed)
 
@@ -15,9 +49,35 @@ def erdos_renyi_directed(n, p, seed=None, self_loops=False):
 
     return adj
 
-import random
 
 def configuration_model_directed(in_degrees, out_degrees, seed=None):
+    """
+    Generate directed graph with specified degree sequence.
+
+    Randomly assigns edges while respecting the given in/out degree requirements.
+    Preserves degree distribution while randomizing topology (null model).
+
+    Parameters
+    ----------
+    in_degrees : array-like
+        Target in-degree for each node.
+
+    out_degrees : array-like
+        Target out-degree for each node.
+
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        Adjacency list: {node_id: [list of neighbors]}.
+
+    Raises
+    ------
+    ValueError
+        If sum of in-degrees does not equal sum of out-degrees.
+    """
     if seed is not None:
         random.seed(seed)
 
@@ -42,9 +102,31 @@ def configuration_model_directed(in_degrees, out_degrees, seed=None):
 
     return adj
 
-import random
 
 def barabasi_albert_directed(n, m, seed=None):
+    """
+    Generate Barabási-Albert preferential attachment graph.
+
+    Starts with m fully connected nodes, then adds nodes one at a time,
+    each connecting to m existing nodes preferentially by degree.
+    Produces power-law degree distributions (scale-free property).
+
+    Parameters
+    ----------
+    n : int
+        Total number of nodes in the final graph.
+
+    m : int
+        Number of edges per new node (also initial clique size).
+
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        Adjacency list: {node_id: [list of neighbors]}.
+    """
     if seed is not None:
         random.seed(seed)
 
@@ -74,7 +156,39 @@ def barabasi_albert_directed(n, m, seed=None):
 
     return adj
 
+
 def watts_strogatz_directed(n, k, p, seed=None):
+    """
+    Generate Watts-Strogatz small-world network.
+
+    Starts with a ring of k nearest neighbors, then rewires edges with
+    probability p. Produces networks with high clustering and short path lengths.
+
+    Parameters
+    ----------
+    n : int
+        Number of nodes arranged in a ring.
+
+    k : int
+        Each node initially connects to k nearest neighbors (k/2 on each side).
+        Must be even.
+
+    p : float
+        Rewiring probability for each edge, in range [0, 1].
+
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        Adjacency list: {node_id: [list of neighbors]}.
+
+    Raises
+    ------
+    ValueError
+        If k is odd.
+    """
     if seed is not None:
         random.seed(seed)
 
@@ -83,10 +197,12 @@ def watts_strogatz_directed(n, k, p, seed=None):
 
     adj = {i: [] for i in range(n)}
 
+    # Initial ring lattice with k nearest neighbors
     for i in range(n):
         for j in range(1, k // 2 + 1):
             adj[i].append((i + j) % n)
 
+    # Rewire edges
     for i in range(n):
         for j in list(adj[i]):
             if random.random() < p:
