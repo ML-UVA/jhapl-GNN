@@ -51,13 +51,11 @@ python spatial_training/networkx_to_pyg.py --config config.json
 ### Path B: The ADP Graph (Physical Touch)
 This approach uses pre-computed mesh intersections (provided by Ben's pipeline) to define candidates that actually physically graze each other.
 ```bash
-# Bypass NetworkX entirely to avoid RAM spikes; converts teammate's dict directly to PyTorch
-python spatial_training/convert_adp_dict.py --config config.json --dict_path path/to/adp_data.pkl
+python spatial_training/adp_nx_to_pyg.py --config config.json --nx_path path/to/adp_graph_raw.pkl
 ```
 * **Output:** `adp_base_edges.pt`
 
 ---
-
 ## 3. Core Training Pipeline Execution
 
 Once the features and base edges are generated, the pipeline execution is identical for both graph types. *(Note: Ensure `paths.input_nx_graph` in your config points to your desired graph type before running).*
