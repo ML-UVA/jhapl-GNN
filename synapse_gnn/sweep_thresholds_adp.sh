@@ -34,7 +34,11 @@ config['graph_generation']['spatial_threshold_nm'] = thresh
 if 'logging' not in config: config['logging'] = {}
 config['logging']['log_file_name'] = f'training_log_{graph_type}_{thresh}nm.txt'
 
-config['paths']['visualization_output'] = f'evals_{graph_type}_{thresh}nm'
+# NEW: Add 'added_adp_weights' ONLY if it's an ADP graph
+if 'adp' in graph_type.lower():
+    config['paths']['visualization_output'] = f'evals_{graph_type}_added_adp_weights_{thresh}nm'
+else:
+    config['paths']['visualization_output'] = f'evals_{graph_type}_{thresh}nm'
 
 with open('config.json', 'w') as f:
     json.dump(config, f, indent=4)
@@ -59,7 +63,7 @@ with open('config.json', 'w') as f:
     python spatial_training/visualization_scripts/generate_feature_analysis.py --config config.json
     
     echo "------------------------------------------------------"
-    echo " Finished ADP ${THRESH}nm run. Results saved to: evals_${GRAPH_TYPE}_${THRESH}nm/"
+    echo " Finished ADP ${THRESH}nm run. Results saved to new weighted folder!"
     echo "------------------------------------------------------"
     echo ""
 done

@@ -49,9 +49,13 @@ def visualize_scores_zoomed():
     
     # DYNAMIC NAMING: Matches the new train_and_eval.py structure
     graph_filename = os.path.splitext(config["paths"]["input_nx_graph"])[0]
-    model_name = f"best_model_{graph_filename}_{THRESH_NM}nm.pth"
-    MODEL_PATH = os.path.join(MODEL_OUT, model_name)
-
+    
+    # FIX: Corrected variable casing (THRESH_NM) and un-indented the print statement
+    if 'adp' in graph_filename.lower():
+        MODEL_PATH = os.path.join(MODEL_OUT, f"best_model_{graph_filename}_added_adp_weights_{THRESH_NM}nm.pth")
+    else:
+        MODEL_PATH = os.path.join(MODEL_OUT, f"best_model_{graph_filename}_{THRESH_NM}nm.pth")
+        
     print(f"--- Generating Distribution Plot for {graph_filename} at {THRESH_NM}nm ---")
     
     # Load Data

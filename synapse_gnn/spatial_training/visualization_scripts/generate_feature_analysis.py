@@ -8,7 +8,6 @@ import seaborn as sns
 from sklearn.metrics import roc_auc_score
 
 from spatial_training import gnn
-from spatial_training.train_and_eval import get_random_subgraph 
 
 # --- 2. CONFIGURATION LOADER ---
 # Set the default config path relative to this script's location
@@ -43,8 +42,14 @@ PATH_TEST_CANDS = os.path.join(CACHE_DIR, "graph_test_spatial_candidates.pt")
 # Graph name inference for dynamic model loading
 graph_name = os.path.splitext(config["paths"]["input_nx_graph"])[0]
 thresh_nm = config["graph_generation"]["spatial_threshold_nm"]
-MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}_{thresh_nm}nm.pth")
 
+# NEW: Conditional Model Weights naming to match train_and_eval.py
+if 'adp' in graph_name.lower():
+    # FIX: Swapped 'model_out' for 'MODEL_OUTPUT_FOLDER'
+    MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}_added_adp_weights_{thresh_nm}nm.pth")
+else:
+    MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}_{thresh_nm}nm.pth")
+    
 # Verify paths exist
 print(f"Cache Directory: {CACHE_DIR}")
 print(f"Model Directory: {MODEL_OUTPUT_FOLDER}")
@@ -79,6 +84,7 @@ print(f"Loaded {test_cands.size(1):,} Spatial Candidates for evaluation.")
 # --- 5. LOAD MODEL ---
 print(f"Loading Morphology Model from {MODEL_PATH}...")
 model = gnn.SynapsePredictor(in_channels=8, hidden_channels=128).to(device)
+# FIX: The model loads correctly here, after the architecture is initialized
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=False))
 model.eval()
 
@@ -171,7 +177,7 @@ def analyze_feature_importance():
         importances.append(drop)
         
     plt.figure(figsize=(12, 7))
-    sns.barplot(x=importances, y=morph_names, palette="magma")
+    sns.barplot(x=importances, y=morph_names, palette="magma", hue=morph_names, legend=False)
     plt.title(f"Feature Importance ({graph_name} Graph Candidates)", fontsize=14)
     plt.xlabel("Drop in ROC-AUC (Higher = More Important)", fontsize=12)
     plt.axvline(0, color='k', linestyle='--', alpha=0.5)
