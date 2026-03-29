@@ -17,13 +17,12 @@ import time
 import numpy as np
 
 
-BASE_DIR = os.path.dirname(__file__)
 
 
 def generate_skeleton_data(neuron_directory):
     """Generate skeletonization data from neuron graph exports."""
 
-    files = [f for f in os.listdir(neuron_directory) if os.path.isfile(os.path.join(neuron_directory, f))]
+    files = [f for f in os.listdir(neuron_directory) if os.path.isfile(os.path.join(neuron_directory, f)) and f.endswith(".pbz2")]
 
     print(f"number of neurons: {len(files)}")
     print(f"first 10 files: {files[0:10]}")
@@ -45,39 +44,26 @@ def generate_skeleton_data(neuron_directory):
 
         with bz2.open(path, 'rb') as f:
             G = pickle.load(f)
+            axon_list = []
+            dendrite_list = []
 
-            final_branch_dict={}
-            
-            first_child_list=[]
-            
-            for edge in G.edges:
-                if edge[0] == "S0":
-                    first_child_list.append(edge[1])
-
-            for node in first_child_list:
-                downstream_connections = nx.descendants(G, node)
-                final_branch_dict[node]=[node]
-                final_branch_dict[node]+= list(downstream_connections)
-                
+            skeleton_dict = {"axon":np.empty((0,3)),"dendrite":np.empty((0,3))}
 
             G_dict = dict(list(G.nodes(data=True)))
 
-            skeleton_dict = {}
+            for node in G_dict:
+                if "axon_compartment" in G_dict[node]:
+                    if G_dict[node]['axon_compartment'] == "axon":
+                        axon_list.append(G_dict[node]["skeleton_data"])
+                    else:
+                        dendrite_list.append(G_dict[node]["skeleton_data"])
+            if len(axon_list)>0:
+                skeleton_dict["axon"] = np.vstack(axon_list)
+            if len(dendrite_list)>0:
+                skeleton_dict["dendrite"] = np.vstack(dendrite_list)
             
-            for node in final_branch_dict:
-                if not G_dict[node]:
-                    continue
-                node_list = [node] + final_branch_dict[node]
-                skeleton_dict[node] = [G_dict[node]['labels'][0],np.empty((0,3))]
-                for child_node in final_branch_dict[node]:
-                    if not G_dict[child_node]:
-                        continue
-                    node_data = G_dict[child_node]
-                    points = node_data['skeleton_data']
-                    skeleton_dict[node][1] = np.vstack((skeleton_dict[node][1], points))
 
             final_skeletonization_dict[neuron_id] = skeleton_dict
-
         if i%1000 ==0:
             print(f"Number of Neuron Skeletonization Data Generated: {i}")
             print(f"Time iterated for 1000 neurons = {time.time()-time_start}")
@@ -86,6 +72,7 @@ def generate_skeleton_data(neuron_directory):
     print(f"Total number of neurons in skeletonization data = {len(final_skeletonization_dict)}")
 
 
-    out_path = os.path.join(BASE_DIR, "data", "skeletonization_data.pkl")
+    out_path = os.path.join("data", "skeletonization_data_simple.pkl")
     with open(out_path, "wb") as f:
         pickle.dump(final_skeletonization_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+    

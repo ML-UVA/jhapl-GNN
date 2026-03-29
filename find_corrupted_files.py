@@ -9,7 +9,18 @@ graph_directory = "data/graph_exports"
 files = sorted([
     f for f in os.listdir(graph_directory)
     if os.path.isfile(os.path.join(graph_directory, f))
+    and f.endswith(".pbz2")
 ])
+
+
+files2 = sorted([
+    f for f in os.listdir(graph_directory)
+    if os.path.isfile(os.path.join(graph_directory, f))
+    and f.endswith(".pbz2")
+])
+
+print(len(files))
+print(len(files2))
 
 corrupted = []
 checked = 0
