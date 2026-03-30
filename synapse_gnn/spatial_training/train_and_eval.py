@@ -142,18 +142,14 @@ def get_random_subgraph(edge_index_cpu, candidates_cpu, num_nodes_total, weights
     cand_mask = node_mask[c_row] & node_mask[c_col]
     local_candidates = torch.stack([dense_map[candidates_cpu[0, cand_mask]], dense_map[candidates_cpu[1, cand_mask]]], dim=0)
     
-    # --- BUG FIX: DYNAMIC WEIGHT MAPPING ---
     if weights_cpu is not None:
         if local_candidates.size(1) > 0 and local_edge_index.size(1) > 0:
-            # 1. Slice weights using the proper candidate mask
             local_cand_weights = weights_cpu[cand_mask]
             
-            # 2. Fast 1D Hash mapping to find positive edge matches
             max_node = sample_size
             hash_cands = local_candidates[0] * max_node + local_candidates[1]
             hash_pos = local_edge_index[0] * max_node + local_edge_index[1]
             
-            # Sort for fast PyTorch binary search
             sort_idx = torch.argsort(hash_cands)
             sorted_hash_cands = hash_cands[sort_idx]
             sorted_weights = local_cand_weights[sort_idx]
@@ -161,23 +157,25 @@ def get_random_subgraph(edge_index_cpu, candidates_cpu, num_nodes_total, weights
             idx = torch.searchsorted(sorted_hash_cands, hash_pos)
             idx = idx.clamp(0, len(sorted_hash_cands) - 1)
             
-            # Validate match and extract weight (default to 1.0 if not found)
             valid_match = sorted_hash_cands[idx] == hash_pos
             local_weights = torch.ones(local_edge_index.size(1), dtype=torch.float32)
             local_weights[valid_match] = sorted_weights[idx[valid_match]]
         else:
             local_weights = torch.ones(local_edge_index.size(1), dtype=torch.float32)
+            local_cand_weights = torch.ones(local_candidates.size(1), dtype=torch.float32) # FIX: Initialize!
     else:
         local_weights = None
+        local_cand_weights = None
         
-    return local_edge_index, local_candidates, perm, local_weights
+    return local_edge_index, local_candidates, perm, local_weights, local_cand_weights
+
 
 def train_step(model, x_global, edge_index_train, cands_train, optimizer, weights_train=None, node_sample_size=6000):
     model.train()
     optimizer.zero_grad()
     num_nodes = x_global.size(0)
     
-    local_edge_index, local_candidates, node_indices, local_weights = get_random_subgraph(
+    local_edge_index, local_candidates, node_indices, local_weights, local_cand_weights = get_random_subgraph(
         edge_index_train, cands_train, num_nodes, weights_train, node_sample_size)
     if local_edge_index.size(1) < 2: return 0.0
     
@@ -199,27 +197,55 @@ def train_step(model, x_global, edge_index_train, cands_train, optimizer, weight
     num_pos = pos_src.size(0)
     num_cands = local_candidates.size(1)
     
+    # Initialize variables to hold the true weights for the target edges
+    pos_weights_target = None
+    neg_weights_target = None
+    
+    if local_weights is not None:
+        pos_weights_target = local_weights[perm[:split_idx]][:num_pos]
+    
     if num_cands > num_pos:
         cand_perm = torch.randperm(num_cands, device=device)[:num_pos]
         neg_src, neg_dst = local_candidates[0, cand_perm], local_candidates[1, cand_perm]
+        if local_cand_weights is not None:
+            neg_weights_target = local_cand_weights[cand_perm].to(device)
+            
     elif num_cands > 0:
         neg_src, neg_dst, num_pos = local_candidates[0], local_candidates[1], num_cands
         pos_src, pos_dst = pos_src[:num_pos], pos_dst[:num_pos]
+        if local_cand_weights is not None:
+            neg_weights_target = local_cand_weights.to(device)
+            pos_weights_target = pos_weights_target[:num_pos] if pos_weights_target is not None else None
     else:
         neg_src = neg_dst = torch.randint(0, node_indices.size(0), (num_pos,), device=device)
+        if local_cand_weights is not None:
+            neg_weights_target = torch.zeros(num_pos, device=device) # Fallback if no structural cands exist
     
-    preds = torch.cat([(z[pos_src] * z[pos_dst]).sum(dim=1), (z[neg_src] * z[neg_dst]).sum(dim=1)])
-    targets = torch.cat([torch.ones(num_pos, device=device), torch.zeros(num_pos, device=device)])
+    # Combine the true positive and true negative weights for the decoder
+    if pos_weights_target is not None and neg_weights_target is not None:
+        target_weights = torch.cat([pos_weights_target, neg_weights_target])
+    else:
+        target_weights = None
+
+    target_edges = torch.cat([
+        torch.stack([pos_src, pos_dst], dim=0),
+        torch.stack([neg_src, neg_dst], dim=0)
+    ], dim=1)
+    
+    preds = model.decode(z, target_edges, explicit_weight=target_weights)
+    targets = torch.cat([torch.ones(num_pos, device=device), torch.zeros(num_pos, device=device)])    
     loss = F.binary_cross_entropy_with_logits(preds, targets)
     loss.backward(); optimizer.step()
     return loss.item()
+
 
 @torch.no_grad()
 def validate_step(model, x_global, edge_index_test, cands_test, weights_test=None, node_sample_size=6000):
     model.eval()
     num_nodes = x_global.size(0)
     
-    local_edge_index, local_candidates, node_indices, local_weights = get_random_subgraph(
+    # FIX: Unpack local_cand_weights
+    local_edge_index, local_candidates, node_indices, local_weights, local_cand_weights = get_random_subgraph(
         edge_index_test, cands_test, num_nodes, weights_test, node_sample_size)
     if local_edge_index.size(1) < 2: return 0.0, 0.0
     
@@ -240,18 +266,46 @@ def validate_step(model, x_global, edge_index_test, cands_test, weights_test=Non
     num_pos = pos_src.size(0)
     num_cands = local_candidates.size(1)
     
+    # Initialize variables to hold the true weights for the target edges
+    pos_weights_target = None
+    neg_weights_target = None
+    
+    if local_weights is not None:
+        pos_weights_target = local_weights[perm[:split_idx]][:num_pos]
+    
     if num_cands > num_pos:
         cand_perm = torch.randperm(num_cands, device=device)[:num_pos]
         neg_src, neg_dst = local_candidates[0, cand_perm], local_candidates[1, cand_perm]
+        if local_cand_weights is not None:
+            neg_weights_target = local_cand_weights[cand_perm].to(device)
+            
     elif num_cands > 0:
         neg_src, neg_dst, num_pos = local_candidates[0], local_candidates[1], num_cands
         pos_src, pos_dst = pos_src[:num_pos], pos_dst[:num_pos]
+        if local_cand_weights is not None:
+            neg_weights_target = local_cand_weights.to(device)
+            pos_weights_target = pos_weights_target[:num_pos] if pos_weights_target is not None else None
     else:
         neg_src = neg_dst = torch.randint(0, node_indices.size(0), (num_pos,), device=device)
+        if local_cand_weights is not None:
+            neg_weights_target = torch.zeros(num_pos, device=device)
     
-    pos_scores, neg_scores = (z[pos_src] * z[pos_dst]).sum(dim=1), (z[neg_src] * z[neg_dst]).sum(dim=1)
-    y_scores = torch.cat([torch.sigmoid(pos_scores), torch.sigmoid(neg_scores)]).cpu().numpy()
-    y_true = np.concatenate([np.ones(pos_scores.size(0)), np.zeros(neg_scores.size(0))])
+    if pos_weights_target is not None and neg_weights_target is not None:
+        target_weights = torch.cat([pos_weights_target, neg_weights_target])
+    else:
+        target_weights = None
+
+    target_edges = torch.cat([
+        torch.stack([pos_src, pos_dst], dim=0),
+        torch.stack([neg_src, neg_dst], dim=0)
+    ], dim=1)
+    
+    # FIX: Use the new MLP decoder instead of hardcoded dot-product
+    preds = model.decode(z, target_edges, explicit_weight=target_weights)
+    
+    y_scores = torch.sigmoid(preds).cpu().numpy()
+    num_neg = neg_src.size(0)
+    y_true = np.concatenate([np.ones(num_pos), np.zeros(num_neg)])
     
     try:
         auc = roc_auc_score(y_true, y_scores)
@@ -260,6 +314,7 @@ def validate_step(model, x_global, edge_index_test, cands_test, weights_test=Non
         auc = f1 = 0.0
     return auc, f1
 
+# --- 5. MAIN PIPELINE ---
 # --- 5. MAIN PIPELINE ---
 def main():
     args = parse_args()
@@ -301,8 +356,6 @@ def main():
         MODEL_SAVE_PATH = os.path.join(model_out, f"best_model_{graph_type}_{thresh_nm}nm.pth")
 
     for epoch in range(1, config["training"]["epochs"] + 1):
-        total_loss = 0    
-    for epoch in range(1, config["training"]["epochs"] + 1):
         total_loss = 0
         for _ in range(config["training"]["steps_per_epoch"]):
             total_loss += train_step(model, x_morph, train_edges, train_cands, optimizer,
@@ -338,7 +391,8 @@ def main():
 
     with torch.no_grad():
         for i in range(config["evaluation"]["test_aggregation_runs"]):
-            local_test_edges, local_test_cands, node_indices, local_weights = get_random_subgraph(
+            # FIX: Unpack local_cand_weights
+            local_test_edges, local_test_cands, node_indices, local_weights, local_cand_weights = get_random_subgraph(
                 test_edges, test_cands, num_nodes_total, weights_cpu=test_weights, sample_size=config["evaluation"]["test_node_sample_size"])
             if local_test_edges.size(1) == 0: continue
             
@@ -363,22 +417,46 @@ def main():
             num_pos = pos_src.size(0)
             num_cands = local_test_cands.size(1)
             
+            pos_weights_target = None
+            neg_weights_target = None
+            
+            if local_weights is not None:
+                pos_weights_target = local_weights[perm[:split_idx]][:num_pos]
+            
             if num_cands > num_pos:
-                perm = torch.randperm(num_cands, device=device)[:num_pos]
-                neg_src, neg_dst = local_test_cands[0, perm], local_test_cands[1, perm]
+                cand_perm = torch.randperm(num_cands, device=device)[:num_pos]
+                neg_src, neg_dst = local_test_cands[0, cand_perm], local_test_cands[1, cand_perm]
+                if local_cand_weights is not None:
+                    neg_weights_target = local_cand_weights[cand_perm].to(device)
             elif num_cands > 0:
                 neg_src, neg_dst, num_pos = local_test_cands[0], local_test_cands[1], num_cands
-            else: continue 
+                pos_src, pos_dst = pos_src[:num_pos], pos_dst[:num_pos]
+                if local_cand_weights is not None:
+                    neg_weights_target = local_cand_weights.to(device)
+                    pos_weights_target = pos_weights_target[:num_pos] if pos_weights_target is not None else None
+            else: 
+                continue 
 
-            p_scores = (z[pos_src.to(device)] * z[pos_dst.to(device)]).sum(dim=1)
-            n_scores = (z[neg_src.to(device)] * z[neg_dst.to(device)]).sum(dim=1)
+            if pos_weights_target is not None and neg_weights_target is not None:
+                target_weights = torch.cat([pos_weights_target, neg_weights_target])
+            else:
+                target_weights = None
+
+            target_edges_eval = torch.cat([
+                torch.stack([pos_src, pos_dst], dim=0),
+                torch.stack([neg_src, neg_dst], dim=0)
+            ], dim=1)
             
-            all_y_scores.append(torch.cat([torch.sigmoid(p_scores), torch.sigmoid(n_scores)]).cpu().numpy())
-            all_y_true.append(np.concatenate([np.ones(p_scores.size(0)), np.zeros(n_scores.size(0))]))
+            # FIX: Use the new MLP decoder instead of hardcoded dot-product
+            preds = model.decode(z, target_edges_eval, explicit_weight=target_weights)
+            
+            all_y_scores.append(torch.sigmoid(preds).cpu().numpy())
+            num_neg = neg_src.size(0)
+            all_y_true.append(np.concatenate([np.ones(num_pos), np.zeros(num_neg)]))
 
     if all_y_true:
         analyze_model_performance(np.concatenate(all_y_true), np.concatenate(all_y_scores), graph_type, thresh_nm, model_out, log_file, vis_dir)
     log_to_file("Pipeline Complete.", log_file)
-
+    
 if __name__ == "__main__":
     main()

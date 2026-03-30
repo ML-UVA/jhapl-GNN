@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Define the thresholds you want to test (in nanometers)
+# Restored the full sweep array for the final test!
 THRESHOLDS=(10000 15000 20000 25000 30000)
 
 # Set the graph type to ADP
@@ -9,7 +9,7 @@ GRAPH_TYPE="adp_graph"
 for THRESH in "${THRESHOLDS[@]}"
 do
     echo "======================================================"
-    echo " STARTING RUN: ${GRAPH_TYPE} @ ${THRESH}nm"
+    echo " STARTING RUN: ${GRAPH_TYPE} @ ${THRESH}nm (MLP Decoder)"
     echo "======================================================"
 
     # Safely update config.json using Python
@@ -34,9 +34,9 @@ config['graph_generation']['spatial_threshold_nm'] = thresh
 if 'logging' not in config: config['logging'] = {}
 config['logging']['log_file_name'] = f'training_log_{graph_type}_{thresh}nm.txt'
 
-# NEW: Add 'added_adp_weights' ONLY if it's an ADP graph
+# NEW: Tagging this specific run with 'mlp_decoder' so it never overwrites old data!
 if 'adp' in graph_type.lower():
-    config['paths']['visualization_output'] = f'evals_{graph_type}_added_adp_weights_{thresh}nm'
+    config['paths']['visualization_output'] = f'evals_{graph_type}_added_adp_weights_mlp_decoder_{thresh}nm'
 else:
     config['paths']['visualization_output'] = f'evals_{graph_type}_{thresh}nm'
 
@@ -63,9 +63,9 @@ with open('config.json', 'w') as f:
     python spatial_training/visualization_scripts/generate_feature_analysis.py --config config.json
     
     echo "------------------------------------------------------"
-    echo " Finished ADP ${THRESH}nm run. Results saved to new weighted folder!"
+    echo " Finished ADP ${THRESH}nm run. Results saved to new MLP folder!"
     echo "------------------------------------------------------"
     echo ""
 done
 
-echo "ALL ADP SWEEPS COMPLETED SUCCESSFULLY."
+echo "ALL ADP MLP SWEEPS COMPLETED SUCCESSFULLY."

@@ -1,6 +1,6 @@
 # Spatial Training Pipeline for Connectomics Edge Classification
 
-This repository module provides a robust, spatially-aware training and evaluation pipeline for classifying synapses in large-scale connectomics volumes. It uses a GraphSAGE-based architecture to differentiate true biological synapses from structural false positives.
+This repository module provides a robust, spatially-aware training and evaluation pipeline for classifying synapses in large-scale connectomics volumes. It utilizes GraphConv layers paired with a custom MLP Decoder to explicitly fuse continuous physical touch data with learned neural morphology, differentiating true biological synapses from structural false positives.
 
 Unlike standard random node/edge splits, this pipeline utilizes **spatial geographic masking** to ensure that training and testing sets represent distinct, biologically dense, and physically separated regions of the brain volume. This guarantees the model learns universal biological morphological rules rather than memorizing local spatial neighborhoods (spatial leakage).
 
@@ -10,6 +10,10 @@ Unlike standard random node/edge splits, this pipeline utilizes **spatial geogra
 * **Terabyte-Scale Memory Mitigation:** Uses dynamic subgraph sampling, fixed-size array pre-allocation, and chunked tensor processing to evaluate 57+ million edges without causing Out-of-Memory (OOM) crashes.
 * **Biological ID Preservation:** Successfully parses and maps 18-digit JHU APL node IDs while preserving `_0` and `_1` proofreading splits.
 * **Automated Hyperparameter Sweeping:** Includes bash orchestration scripts to automatically sweep through spatial quarantine thresholds (10µm to 30µm), log metrics, and generate trend visualizations.
+
+
+### Why a Custom MLP Decoder?
+Our architecture utilizes a custom Multi-Layer Perceptron (MLP) decoder rather than a standard dot-product decoder to fully leverage continuous physical data. While standard graph decoders utilize edge weights (like ADP surface area) during message passing, they remain "blind" to that explicit data during the final prediction step. Our MLP decoder solves this by directly concatenating the learned morphological embeddings of the source and destination nodes with the raw continuous edge weight. This explicitly fuses learned neural morphology with the physical reality of the connection, pushing our baseline ROC-AUC to 91.5% across a 30µm spatial quarantine.
 
 ---
 

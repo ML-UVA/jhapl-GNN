@@ -1,29 +1,28 @@
 #!/bin/bash
 
-# Define the thresholds you want to test (in nanometers)
+# The full spatial decay test
 THRESHOLDS=(10000 15000 20000 25000 30000)
 
-# Set the graph type for the sweep
+# Set the graph type to EUC
 GRAPH_TYPE="euc_graph"
 
 for THRESH in "${THRESHOLDS[@]}"
 do
     echo "======================================================"
-    echo " STARTING RUN: ${GRAPH_TYPE} @ ${THRESH}nm"
+    echo " STARTING RUN: ${GRAPH_TYPE} @ ${THRESH}nm (MLP Decoder)"
     echo "======================================================"
 
-    # Safely update config.json using Python to avoid regex/sed corruption
+    # Safely update config.json using Python
     python3 -c "
 import json
 
 with open('config.json', 'r') as f:
     config = json.load(f)
 
-# Use bash variables safely inside the Python script
 graph_type = '${GRAPH_TYPE}'
 thresh = ${THRESH}
 
-# IMPORTANT: Update input graph path so train_and_eval.py parses 'graph_type' correctly!
+# Update input graph path
 if 'paths' not in config: config['paths'] = {}
 config['paths']['input_nx_graph'] = f'{graph_type}.gpickle'
 
@@ -35,26 +34,38 @@ config['graph_generation']['spatial_threshold_nm'] = thresh
 if 'logging' not in config: config['logging'] = {}
 config['logging']['log_file_name'] = f'training_log_{graph_type}_{thresh}nm.txt'
 
-config['paths']['visualization_output'] = f'evals_{graph_type}_{thresh}nm'
+# Tagging this EUC run with 'mlp_decoder' so we can compare it fairly!
+if 'adp' in graph_type.lower():
+    config['paths']['visualization_output'] = f'evals_{graph_type}_added_adp_weights_mlp_decoder_{thresh}nm'
+else:
+    config['paths']['visualization_output'] = f'evals_{graph_type}_mlp_decoder_{thresh}nm'
 
 with open('config.json', 'w') as f:
     json.dump(config, f, indent=4)
 "
-    echo "Successfully updated config.json for ${THRESH}nm."
+    echo "Successfully updated config.json for EUC ${THRESH}nm."
 
-    # 1. Run the pipeline!
-    # (Ensure run_pipeline.sh is set up to run networkx_to_pyg.py for Euclidean graphs)
-    ./run_pipeline.sh
+    # 1. Geographic Splitting
+    echo "Growing Spatial Training/Testing Clusters..."
+    python spatial_training/create_spatial_split.py --config config.json
 
-    # 2. Run the visualizations
+    # 2. Edge Masking 
+    echo "Splitting and Stitching EUC Ground Truth..."
+    python spatial_training/split_and_stitch_edges.py --config config.json
+
+    # 3. Model Training
+    echo "Training GraphSAGE Model..."
+    python spatial_training/train_and_eval.py --config config.json
+
+    # 4. Visualizations
     echo "Generating evaluation plots..."
     python spatial_training/visualization_scripts/check_distribution.py --config config.json
-    python spatial_training/visualization_scripts/generate_feature_analysis.py --config config.json
+    python spatial_training/visualization_scripts/generate_feature_analysis_mlp_decoder.py --config config.json
     
     echo "------------------------------------------------------"
-    echo " Finished ${THRESH}nm run. Results saved to: evals_${GRAPH_TYPE}_${THRESH}nm/"
+    echo " Finished EUC ${THRESH}nm run. Results saved!"
     echo "------------------------------------------------------"
     echo ""
 done
 
-echo "ALL SWEEPS COMPLETED SUCCESSFULLY."
+echo "ALL EUC MLP SWEEPS COMPLETED SUCCESSFULLY."
