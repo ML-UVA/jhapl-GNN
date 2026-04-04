@@ -36,20 +36,40 @@ PATH_X = os.path.join(CACHE_DIR, "x_features.pt")
 PATH_TEST_EDGES = os.path.join(CACHE_DIR, "graph_test_edges.pt")
 PATH_TRAIN_EDGES = os.path.join(CACHE_DIR, "graph_train_edges.pt")
 PATH_TEST_CANDS = os.path.join(CACHE_DIR, "graph_test_spatial_candidates.pt")
+PATH_TRAIN_CANDS = os.path.join(CACHE_DIR, "graph_train_spatial_candidates.pt")
+
 
 graph_name = os.path.splitext(config["paths"]["input_nx_graph"])[0]
 thresh_nm = config["graph_generation"]["spatial_threshold_nm"]
 
 is_adp = 'adp' in graph_name.lower()
 
+# GLOBALLY LOAD AND NORMALIZE WEIGHTS
+if is_adp:
+    PATH_TRAIN_WEIGHTS = os.path.join(CACHE_DIR, "graph_train_spatial_weights.pt")
+    PATH_TEST_WEIGHTS = os.path.join(CACHE_DIR, "graph_test_spatial_weights.pt")
+    
+    if os.path.exists(PATH_TEST_WEIGHTS) and os.path.exists(PATH_TRAIN_WEIGHTS):
+        train_weights_raw = torch.load(PATH_TRAIN_WEIGHTS, weights_only=False).cpu()
+        test_weights_raw = torch.load(PATH_TEST_WEIGHTS, weights_only=False).cpu()
+        
+        max_weight = train_weights_raw.max()
+        train_weights = train_weights_raw / max_weight  
+        test_weights = test_weights_raw / max_weight    
+        print("Loaded and Normalized Continuous ADP Weights for Evaluation.")
+    else:
+        print("WARNING: ADP graph detected, but weight tensors were missing!")
+        train_weights = None
+        test_weights = None
+else:
+    train_weights = None
+    test_weights = None
+
 if is_adp:
     MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}_added_adp_weights_{thresh_nm}nm.pth")
-    PATH_TEST_WEIGHTS = os.path.join(CACHE_DIR, "graph_test_spatial_weights.pt")
 else:
     MODEL_PATH = os.path.join(MODEL_OUTPUT_FOLDER, f"best_model_{graph_name}_{thresh_nm}nm.pth")
-    PATH_TEST_WEIGHTS = None
     
-# Create output dir
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 print(f"Output Directory: {OUTPUT_FOLDER}\n")
 
@@ -69,12 +89,7 @@ spatial_indices = [11, 12, 13]
 test_edges = torch.load(PATH_TEST_EDGES, weights_only=False).cpu()
 train_edges = torch.load(PATH_TRAIN_EDGES, weights_only=False).cpu()
 test_cands = torch.load(PATH_TEST_CANDS, weights_only=False).cpu()
-
-if is_adp and os.path.exists(PATH_TEST_WEIGHTS):
-    test_weights = torch.load(PATH_TEST_WEIGHTS, weights_only=False).cpu()
-    print("Loaded Continuous ADP Weights for Evaluation.")
-else:
-    test_weights = None
+train_cands = torch.load(PATH_TRAIN_CANDS, weights_only=False).cpu()
 
 # --- 4. LOAD MODEL ---
 print(f"Loading MLP Decoder Model from {MODEL_PATH}...")
@@ -126,6 +141,7 @@ def get_eval_subgraph(edge_index_cpu, candidates_cpu, num_nodes_total, weights_c
     return local_edge_index, local_candidates, perm, local_weights, local_cand_weights
 
 # --- HELPER: INDUCTIVE ENCODING ---
+# --- HELPER: INDUCTIVE ENCODING ---
 def get_inductive_embeddings(subset_x, subset_node_indices):
     num_nodes_total = x_global_raw.size(0)
     subset_mask = torch.zeros(num_nodes_total, dtype=torch.bool)
@@ -135,6 +151,34 @@ def get_inductive_embeddings(subset_x, subset_node_indices):
     edge_mask = subset_mask[train_row] & subset_mask[train_col]
     batch_train_edges = train_edges[:, edge_mask]
     
+    if train_weights is not None:
+        # Match train_edges to train_cands to extract the correct weights
+        cand_row, cand_col = train_cands
+        cand_mask = subset_mask[cand_row] & subset_mask[cand_col]
+        local_cands = train_cands[:, cand_mask]
+        local_cand_weights = train_weights[cand_mask]
+        
+        if local_cands.size(1) > 0 and batch_train_edges.size(1) > 0:
+            max_node = num_nodes_total
+            hash_cands = local_cands[0] * max_node + local_cands[1]
+            hash_pos = batch_train_edges[0] * max_node + batch_train_edges[1]
+            
+            sort_idx = torch.argsort(hash_cands)
+            sorted_hash_cands = hash_cands[sort_idx]
+            sorted_weights = local_cand_weights[sort_idx]
+            
+            idx = torch.searchsorted(sorted_hash_cands, hash_pos)
+            idx = idx.clamp(0, len(sorted_hash_cands) - 1)
+            
+            valid_match = sorted_hash_cands[idx] == hash_pos
+            local_context_weights = torch.ones(batch_train_edges.size(1), dtype=torch.float32)
+            local_context_weights[valid_match] = sorted_weights[idx[valid_match]]
+            local_context_weights = local_context_weights.to(device)
+        else:
+            local_context_weights = torch.ones(batch_train_edges.size(1), dtype=torch.float32).to(device)
+    else:
+        local_context_weights = None
+    
     node_idx_map = torch.full((num_nodes_total,), -1, dtype=torch.long)
     node_idx_map[subset_node_indices] = torch.arange(len(subset_node_indices))
     
@@ -143,9 +187,8 @@ def get_inductive_embeddings(subset_x, subset_node_indices):
     ], dim=0)
     
     with torch.no_grad():
-        z = model.encode(subset_x.to(device), local_context_edges.to(device))
+        z = model.encode(subset_x.to(device), local_context_edges.to(device), edge_weight=local_context_weights)
     return z
-
 # --- HELPER: SCORE AUC ---
 def calculate_auc(z, pos_edges, neg_edges, explicit_weights):
     if pos_edges.size(1) == 0 or neg_edges.size(1) == 0: return 0.5
@@ -172,7 +215,6 @@ def analyze_feature_importance():
     local_pos, local_neg, node_indices, local_weights, local_cand_weights = get_eval_subgraph(
         test_edges, test_cands, x_global_raw.size(0), weights_cpu=test_weights, sample_size=eval_sample_size)
     
-    # Downsample negatives to match positives for balanced metric
     num_pos = local_pos.size(1)
     num_neg = local_neg.size(1)
     if num_neg > num_pos:
@@ -180,8 +222,7 @@ def analyze_feature_importance():
         local_neg = local_neg[:, perm]
         if local_cand_weights is not None:
             local_cand_weights = local_cand_weights[perm]
-    
-    # Safely construct explicit weights
+            
     if local_weights is not None and local_cand_weights is not None:
         explicit_weights = torch.cat([local_weights, local_cand_weights]).to(device)
     else:
