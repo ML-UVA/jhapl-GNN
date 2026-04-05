@@ -1,8 +1,8 @@
 """
-Graph visualization and spatial filtering utilities.
+Spatial analysis utilities for neural networks.
 
-Functions for filtering neurons by spatial proximity, constructing
-subgraph views, and visualizing networks with PCA decomposition.
+Functions for filtering neurons by spatial proximity, constructing subgraph views,
+decomposing coordinates for visualization, and plotting network structure.
 """
 
 import numpy as np
