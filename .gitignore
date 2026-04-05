@@ -1,6 +1,7 @@
 /saved_models_spatial
 /cache_spatial
 /*evals_*_*/
+/cache_spatial_test
 
 # Ignore Python compiled files globally
 **/__pycache__/

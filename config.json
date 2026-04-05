@@ -3,10 +3,10 @@
         "neurons_directory": "/p/mlatuva/jhu-graph/graph_exports"
     },
     "paths": {
-        "data_dir": "./cache_spatial",
+        "data_dir": "./cache_spatial_test",
         "model_out": "./saved_models_spatial",
-        "input_nx_graph": "adp_graph.gpickle",
-        "visualization_output": "evals_adp_graph_mlp_decoder_30000nm"
+        "input_nx_graph": "euc_graph.gpickle",
+        "visualization_output": "evals_euc_graph_mlp_decoder_30000nm_full_pipeline"
     },
     "graph_generation": {
         "spatial_threshold_nm": 30000,

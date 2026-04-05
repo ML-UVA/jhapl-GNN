@@ -1,8 +1,27 @@
 import os
 import torch
 
+from synapse_gnn.data_prep.extract_nx_edges import extract_base_tensors
+from synapse_gnn.data.spatial_split import generate_spatial_masks_and_stitch
 def load_graph_data(config):
     data_dir = config["paths"]["data_dir"]
+    data_dir = config["paths"]["data_dir"]
+    
+    # --- AUTO-TRIGGER LOGIC ---
+    # 1. Check if the final PyG tensors exist
+    check_file = os.path.join(data_dir, "graph_train_spatial_candidates.pt")
+    
+    if not os.path.exists(check_file):
+        print(f"Detected missing dataset files for {config['paths']['input_nx_graph']}. Rebuilding...")
+        
+        # 2. Check if we need to extract the base edges from the gpickle
+        base_edge_file = os.path.join(data_dir, "base_edges.pt")
+        if not os.path.exists(base_edge_file):
+            extract_base_tensors(config)
+            
+        # 3. Generate the spatial split and stitch the final graph
+        generate_spatial_masks_and_stitch(config)
+    # ------------------------------
     print(f"Loading standard graph tensors from: {data_dir}")
     
     paths = {
