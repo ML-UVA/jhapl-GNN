@@ -6,7 +6,7 @@
         "data_dir": "./cache_spatial",
         "model_out": "./saved_models_spatial",
         "input_nx_graph": "adp_graph.gpickle",
-        "visualization_output": "evals_adp_graph_added_adp_weights_mlp_decoder_30000nm"
+        "visualization_output": "evals_adp_graph_mlp_decoder_30000nm"
     },
     "graph_generation": {
         "spatial_threshold_nm": 30000,
@@ -22,10 +22,11 @@
     "architecture": {
         "in_channels": 8,
         "hidden_dim": 128,
-        "selected_features": [0,1,2,3,4,5,6,7]
+        "selected_features": [0,1,2,3,4,5,6,7],
+        "use_edge_weights": true
     },
     "training": {
-        "epochs": 0,
+        "epochs": 50,
         "learning_rate": 0.001,
         "steps_per_epoch": 100,
         "train_node_sample_size": 8000,

@@ -31,11 +31,14 @@ def main():
     # 1. LOAD DATA
     data_dict = load_graph_data(config)
     
+    use_weights = config["architecture"].get("use_edge_weights", True)
+    print(f"Using edge weights: {use_weights}")
     # 2. INITIALIZE MODEL
     num_features = len(config["architecture"].get("selected_features", [0, 1, 2, 3, 4, 5, 6, 7]))
     model = SynapsePredictor(
         in_channels=num_features, 
-        hidden_channels=config["architecture"]["hidden_dim"]
+        hidden_channels=config["architecture"]["hidden_dim"],
+        use_edge_weights= use_weights
     ).to(device)
 
     # 3. TRAIN
