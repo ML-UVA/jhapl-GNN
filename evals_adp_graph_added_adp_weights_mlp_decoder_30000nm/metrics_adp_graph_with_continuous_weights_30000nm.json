@@ -1,0 +1,15 @@
+{
+    "graph_type": "adp_graph",
+    "spatial_threshold_nm": 30000,
+    "roc_auc": 0.8983978707195368,
+    "pr_auc": 0.914457713744598,
+    "brier_score": 0.12621385785591524,
+    "optimal_threshold": 0.44440603256225586,
+    "best_f1": 0.8143378544220072,
+    "confusion_matrix": {
+        "tn": 77264,
+        "fp": 17162,
+        "fn": 17785,
+        "tp": 76641
+    }
+}

@@ -18,7 +18,7 @@ if grandparent_dir not in sys.path:
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-import spatial_training.gnn as gnn
+import synapse_gnn.models.gnn as gnn
 from spatial_training.main import get_random_subgraph
 
 # --- 2. CONFIGURATION ---

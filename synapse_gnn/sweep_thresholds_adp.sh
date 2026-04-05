@@ -60,7 +60,7 @@ with open('config.json', 'w') as f:
     # 4. Visualizations
     echo "Generating evaluation plots..."
     python spatial_training/visualization_scripts/check_distribution.py --config config.json
-    python spatial_training/visualization_scripts/generate_feature_analysis.py --config config.json
+    python spatial_training/visualization_scripts/generate_feature_analysis_mlp_decoder.py --config config.json
     
     echo "------------------------------------------------------"
     echo " Finished ADP ${THRESH}nm run. Results saved to new MLP folder!"

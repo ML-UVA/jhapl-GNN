@@ -1,0 +1,43 @@
+import os
+import torch
+
+def load_graph_data(config):
+    data_dir = config["paths"]["data_dir"]
+    print(f"Loading standard graph tensors from: {data_dir}")
+    
+    paths = {
+        "x": os.path.join(data_dir, "x_features.pt"),
+        "train_pos": os.path.join(data_dir, "graph_train_edges.pt"),
+        "test_pos": os.path.join(data_dir, "graph_test_edges.pt"),
+        "train_cands": os.path.join(data_dir, "graph_train_spatial_candidates.pt"),
+        "test_cands": os.path.join(data_dir, "graph_test_spatial_candidates.pt")
+    }
+    
+    data = {k: torch.load(v, weights_only=False).cpu() for k, v in paths.items()}
+    
+    # Dynamically check for continuous weights (Replaces hardcoded ADP check)
+    path_train_weights = os.path.join(data_dir, "graph_train_spatial_weights.pt")
+    path_test_weights = os.path.join(data_dir, "graph_test_spatial_weights.pt")
+    
+    if os.path.exists(path_train_weights) and os.path.exists(path_test_weights):
+        print(" -> Detected continuous edge weights. Normalizing...")
+        train_weights_raw = torch.load(path_train_weights, weights_only=False).cpu()
+        test_weights_raw = torch.load(path_test_weights, weights_only=False).cpu()
+        
+        max_weight = train_weights_raw.max() 
+        train_weights = train_weights_raw / max_weight
+        test_weights = test_weights_raw / max_weight
+    else:
+        print(" -> No continuous weights detected. Defaulting to unweighted message passing.")
+        train_weights = None
+        test_weights = None
+
+    return {
+        "x_raw": data["x"],
+        "train_edges": data["train_pos"],
+        "test_edges": data["test_pos"],
+        "train_cands": data["train_cands"],
+        "test_cands": data["test_cands"],
+        "train_weights": train_weights,
+        "test_weights": test_weights
+    }

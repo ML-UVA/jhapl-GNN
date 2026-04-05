@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
-from spatial_training import gnn
+from synapse_gnn.models import gnn
 
 # --- 1. CONFIGURATION LOADER ---
 def load_config(config_path):

@@ -2,12 +2,12 @@ import os
 import argparse
 import torch
 import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, roc_auc_score, f1_score
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, roc_auc_score, f1_score, average_precision_score, brier_score_loss, precision_recall_curve
 import numpy as np
 import json
 
 # Import your model architecture using the new module structure
-from spatial_training import gnn
+from synapse_gnn.models import gnn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -73,22 +73,30 @@ def log_to_file(message, log_file):
 def analyze_model_performance(y_true, y_scores, graph_type, thresh_nm, model_out, log_file, vis_dir):
     try:
         auc = roc_auc_score(y_true, y_scores)
+        # NEW: Calculate PR-AUC and Brier Score
+        pr_auc = average_precision_score(y_true, y_scores)
+        brier = brier_score_loss(y_true, y_scores)
     except:
-        auc = 0.0
+        auc = pr_auc = brier = 0.0
         
     log_to_file(f"\n====== FINAL MODEL EVALUATION ======", log_file)
-    log_to_file(f"ROC AUC: {auc:.4f}", log_file)
+    log_to_file(f"ROC AUC: {auc:.4f} | PR AUC: {pr_auc:.4f} | Brier Score: {brier:.4f}", log_file)
 
-    thresholds = np.arange(0.01, 1.00, 0.01)
-    best_f1 = 0.0
-    best_thresh = 0.5
+    # NEW: Dynamically find the absolute best threshold using the PR curve
+    precisions, recalls, thresholds = precision_recall_curve(y_true, y_scores)
+    numerator = 2 * precisions * recalls
+    denominator = precisions + recalls
     
-    for thresh in thresholds:
-        preds = (y_scores >= thresh).astype(int)
-        f1 = f1_score(y_true, preds, zero_division=0)
-        if f1 > best_f1:
-            best_f1 = f1
-            best_thresh = thresh
+    # Safely divide to calculate F1 scores for all possible thresholds
+    f1_scores = np.divide(numerator, denominator, out=np.zeros_like(numerator), where=denominator!=0)
+    
+    if len(f1_scores) > 0:
+        best_idx = np.argmax(f1_scores)
+        best_f1 = f1_scores[best_idx]
+        # thresholds array is 1 element shorter than precisions/recalls, safely index it
+        best_thresh = thresholds[best_idx] if best_idx < len(thresholds) else 0.5
+    else:
+        best_f1, best_thresh = 0.0, 0.5
             
     final_preds = (y_scores >= best_thresh).astype(int)
     acc = accuracy_score(y_true, final_preds)
@@ -104,6 +112,8 @@ def analyze_model_performance(y_true, y_scores, graph_type, thresh_nm, model_out
             "graph_type": graph_type,
             "spatial_threshold_nm": thresh_nm,
             "roc_auc": float(auc),
+            "pr_auc": float(pr_auc),          # <-- ADDED
+            "brier_score": float(brier),      # <-- ADDED
             "optimal_threshold": float(best_thresh),
             "best_f1": float(best_f1),
             "accuracy": float(acc),

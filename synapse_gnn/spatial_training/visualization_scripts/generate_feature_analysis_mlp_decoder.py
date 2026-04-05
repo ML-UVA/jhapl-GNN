@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import roc_auc_score
 
-from spatial_training import gnn
+from synapse_gnn.models import gnn
 
 # --- 1. CONFIGURATION LOADER ---
 current_file = os.path.abspath(__file__)

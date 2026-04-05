@@ -18,3 +18,4 @@
 *.png
 /spatial_training.egg-info
 *.txt
+/training_results
