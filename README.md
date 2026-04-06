@@ -100,3 +100,25 @@ The pipeline uses dynamic subgraph sampling, fixed-size array pre-allocation, an
 
 ### 4. Biological ID Preservation
 The data ingestion logic successfully parses and maps 18-digit JHU-APL node IDs while preserving `_0` and `_1` proofreading splits, ensuring perfect biological alignment with the feature matrix throughout the training process.
+
+
+### 🧪 Experimental Findings: Spatial Proximity vs. Physical Touch
+
+During the development of the custom MLP decoder, a rigorous A/B test was conducted across a 30,000nm spatial quarantine to determine the optimal foundational graph topology. We compared two distinct structural philosophies:
+1. **The ADP Graph (Physical Touch):** Edges are strictly limited to neurons with confirmed, continuous mesh intersections (surface area contact).
+2. **The Euclidean Graph (Spatial Proximity):** Edges connect all neurons within a broad 100µm radius, regardless of direct physical contact (generating ~44.8M candidate edges).
+
+**Results:**
+The unweighted Euclidean proximity graph unexpectedly outperformed the highly specific physical touch graph across all key inductive metrics:
+
+* **PR-AUC:** **0.926** (Euclidean) vs. 0.913 (ADP)
+* **Brier Score:** **0.113** (Euclidean) vs. 0.126 (ADP)
+* **False Positives:** **11,434** (Euclidean) vs. 18,862 (ADP) — *A 39% reduction in false alarms.*
+
+**Architectural Insight:**
+**Architectural Insights & Hypotheses:**
+The unexpected superiority of the Euclidean graph over the strict ADP graph suggests that structural proximity provides a more robust learning environment for this specific architecture. There are three primary hypotheses for why this occurs:
+
+* **1. Mitigation of Contextual Starvation:** Graph Neural Networks rely on message passing to build node embeddings. The strict physical-touch constraints of the ADP graph create a relatively sparse topology. Conversely, the Euclidean graph's 100µm radius acts as a massive contextual net, allowing the `GraphConv` layers to aggregate data from millions of neighboring cells to build a much richer, denser summary of the local biological environment.
+* **2. Bypassing Upstream Segmentation Errors:** The ADP graph assumes the upstream mesh generation pipeline is flawless. If a microscopic physical touch is missed during upstream segmentation, that edge is permanently lost, and the GNN is blinded to it. The Euclidean graph acts as a safety net, evaluating all proximal candidates and preventing upstream false negatives from artificially hiding true synapses.
+* **3. Morphological Synergy Overrules Surface Area:** The custom MLP decoder directly evaluates macro-morphological features (e.g., Axon Length, Total Spines) at the final prediction step. The data suggests that knowing two neurons share the same localized neighborhood (proximity) combined with their explicit structural capacities (morphology) provides a stronger statistical signal for predicting a synapse than relying on the isolated, continuous surface-area weights of the ADP graph.

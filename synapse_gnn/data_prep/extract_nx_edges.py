@@ -28,6 +28,8 @@ def extract_base_tensors(config):
     first_node = list(G.nodes())[0]
     is_integer_indexed = isinstance(first_node, int)
     
+    # Allows pipeline to handle both ADP graph(string indexed) and integer based euclidean graphs
+    # without breaking
     if is_integer_indexed:
         print(" -> Detected Integer-Indexed Graph (Direct PyTorch Mapping)")
     else:
