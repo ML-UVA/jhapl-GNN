@@ -7,7 +7,7 @@ from sklearn.neighbors import NearestNeighbors
 def generate_spatial_masks_and_stitch(config):
     graph_filename = config["paths"]["input_nx_graph"]
     CACHE_DIR = config["paths"]["data_dir"]
-    is_adp = "adp" in graph_filename.lower()
+    load_weights = config.get("graph_generation", {}).get("load_edge_weights", False)
     
     SPATIAL_OFFSET = config["graph_generation"]["spatial_threshold_nm"]
     TRAIN_SIZE = config["spatial_split"]["train_cluster_size"]
@@ -25,7 +25,7 @@ def generate_spatial_masks_and_stitch(config):
     coords = x_features[:, [11, 12, 13]].numpy() # XYZ coordinates
     
     base_edges = torch.load(os.path.join(CACHE_DIR, "base_edges.pt"), weights_only=False)
-    if is_adp:
+    if load_weights:
         base_weights = torch.load(os.path.join(CACHE_DIR, "base_weights.pt"), weights_only=False)
 
     # 2. Generate Spatial Masks
@@ -72,7 +72,7 @@ def generate_spatial_masks_and_stitch(config):
     torch.save(base_edges[:, train_edge_mask].contiguous(), os.path.join(CACHE_DIR, "graph_train_spatial_candidates.pt"))
     torch.save(base_edges[:, test_edge_mask].contiguous(), os.path.join(CACHE_DIR, "graph_test_spatial_candidates.pt"))
 
-    if is_adp:
+    if load_weights:
         torch.save(base_weights[train_edge_mask].contiguous(), os.path.join(CACHE_DIR, "graph_train_spatial_weights.pt"))
         torch.save(base_weights[test_edge_mask].contiguous(), os.path.join(CACHE_DIR, "graph_test_spatial_weights.pt"))
     else:

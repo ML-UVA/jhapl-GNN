@@ -10,7 +10,8 @@
     },
     "graph_generation": {
         "spatial_threshold_nm": 30000,
-        "adp_threshold": 0.0
+        "adp_threshold": 0.0,
+        "load_edge_weights": true
     },
     "graph_conversion": {
         "make_undirected": true

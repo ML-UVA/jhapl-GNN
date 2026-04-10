@@ -11,8 +11,7 @@ import pickle
 def extract_base_tensors(config):
     graph_filename = config["paths"]["input_nx_graph"]
     CACHE_DIR = config["paths"]["data_dir"]
-    is_adp = "adp" in graph_filename.lower()
-    
+    load_weights = config.get("graph_generation", {}).get("load_edge_weights", False)
     print(f"\n--- Extracting Base Edges from {graph_filename} ---")
     
     # 1. Load Node Mapping
@@ -49,7 +48,7 @@ def extract_base_tensors(config):
             u_idx, v_idx = id_to_idx[u_str], id_to_idx[v_str]
             
         base_edges.extend([[u_idx, v_idx], [v_idx, u_idx]]) # Bidirectional
-        if is_adp:
+        if load_weights:
             w = data.get('adp', 1.0)
             base_weights.extend([w, w])
                 
@@ -62,7 +61,7 @@ def extract_base_tensors(config):
     torch.save(base_edges_tensor, os.path.join(CACHE_DIR, "base_edges.pt"))
     print(f"Saved {base_edges_tensor.size(1):,} structural edges.")
 
-    if is_adp: 
+    if load_weights: 
         base_weights_tensor = torch.tensor(base_weights, dtype=torch.float)
         torch.save(base_weights_tensor, os.path.join(CACHE_DIR, "base_weights.pt"))
         print(f"Saved {base_weights_tensor.size(0):,} continuous weights.")
