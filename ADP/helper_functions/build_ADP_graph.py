@@ -1,13 +1,21 @@
 import pickle
 import argparse
 import networkx as nx
+import os
 
 
-def build_graph(input_file, output_file, threshold):
+def build_graph(base_path, threshold):
+    input_file = os.path.join(base_path, "adp_data.pkl")
+
+    output_file = os.path.join(
+        base_path,
+        f"adp_graph_threshold_{threshold}.pkl"
+    )
+
     with open(input_file, "rb") as f:
         adp_dict = pickle.load(f)
 
-    print("Loaded ADP dictionary")
+    print(f"Loaded ADP dictionary from {input_file}")
 
     G = nx.DiGraph()
 
@@ -19,6 +27,7 @@ def build_graph(input_file, output_file, threshold):
     print("Graph built")
     print("Nodes:", G.number_of_nodes())
     print("Edges:", G.number_of_edges())
+
     with open(output_file, "wb") as f:
         pickle.dump(G, f)
 
@@ -28,8 +37,11 @@ def build_graph(input_file, output_file, threshold):
 def main():
     parser = argparse.ArgumentParser(description="Build ADP graph with thresholding")
 
-    parser.add_argument("input_file", help="Path to ADP dictionary pickle file")
-    parser.add_argument("output_file", help="Output graph pickle file")
+    parser.add_argument(
+        "base_path",
+        help="Directory containing adp_data.pkl"
+    )
+
     parser.add_argument(
         "--threshold",
         type=float,
@@ -39,7 +51,7 @@ def main():
 
     args = parser.parse_args()
 
-    build_graph(args.input_file, args.output_file, args.threshold)
+    build_graph(args.base_path, args.threshold)
 
 
 if __name__ == "__main__":

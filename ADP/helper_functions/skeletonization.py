@@ -24,12 +24,6 @@ def generate_skeleton_data(neuron_directory):
 
     files = [f for f in os.listdir(neuron_directory) if os.path.isfile(os.path.join(neuron_directory, f)) and f.endswith(".pbz2")]
 
-    print(f"number of neurons: {len(files)}")
-    print(f"first 10 files: {files[0:10]}")
-
-    
-    # Final skeletonization data that is indexed by the neuron_id and split index
-    # ex: final_skeletonization_dict["86491135657800322_0"]
 
     final_skeletonization_dict = {}
 
