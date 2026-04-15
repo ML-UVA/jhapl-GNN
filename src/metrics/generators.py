@@ -44,9 +44,14 @@ def run_null_models(null_generators: list, metrics: list, GT: nx.Graph, N=50):
     for _ in range(N):
         for null_gen in null_generators:
             G = null_gen(GT)
-            results[null_gen.__name__].append([
-                metric(G) for metric in metrics
-            ])
+            metric_values = []
+            for metric in metrics:
+                # Handle triangles metric on directed graphs
+                if metric.__name__ == 'triangles' and G.is_directed():
+                    metric_values.append(metric(G.to_undirected()))
+                else:
+                    metric_values.append(metric(G))
+            results[null_gen.__name__].append(metric_values)
     return results
 
 
@@ -76,11 +81,15 @@ def summarize_results(GT: nx.Graph, results: dict, metrics: list):
         'mean {metric_name}' and 'stdev {metric_name}'.
     """
     true_res = pd.DataFrame({
-        "model": "ground truth"
+        "model": ["ground truth"]
     })
     for metric in metrics:
-        true_res[f"mean {metric.__name__}"] = metric(GT)
-        true_res[f"stdev {metric.__name__}"] = None
+        # Handle triangles metric on directed graphs
+        if metric.__name__ == 'triangles' and GT.is_directed():
+            true_res[f"mean {metric.__name__}"] = [metric(GT.to_undirected())]
+        else:
+            true_res[f"mean {metric.__name__}"] = [metric(GT)]
+        true_res[f"stdev {metric.__name__}"] = [None]
 
     summary = pd.DataFrame({
         "model": list(results.keys())

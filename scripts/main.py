@@ -11,6 +11,8 @@ Edit the CONFIG section below to customize which analyses to run.
 
 import sys
 import json
+import argparse
+import textwrap
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,9 +37,6 @@ CONFIG = {
     # Which null models to run
     'null_models': [
         'ER',
-        'configuration',
-        'BA',
-        'smallworld',
         'spatial_null',  # Requires bin_model
     ],
     
@@ -61,8 +60,9 @@ CONFIG = {
     # Analysis parameters
     'n_null_samples': 10,        # Samples per null model
     'n_motif_samples': 10,       # Samples for motif analysis
-    'n_bins': 20,                # Feature bins for spatial null
+    'n_bins': 5,                # Feature bins for spatial null
     'spatial_radius': 50000,     # Spatial filtering radius
+    'distance_metric': 'euclidean',  # 'euclidean' or 'adp'
     
     # Reproducibility
     'random_seed': 42,
@@ -106,29 +106,117 @@ def get_metric(name):
     return METRIC_FUNCTIONS[name]
 
 # ============================================================================
+# COMMAND-LINE ARGUMENTS
+# ============================================================================
+
+def parse_arguments():
+    """Parse command-line arguments for custom data paths."""
+    parser = argparse.ArgumentParser(
+        description='JHU-GNN: Graph Analysis Pipeline',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent(f'''
+        Examples:
+          Run with default data paths:
+            python3 main.py
+          
+          Use custom synapse and positions JSON files:
+            python3 main.py --synapses custom_synapses.json --positions custom_positions.json
+          
+          Use paths relative to project root:
+            python3 main.py --synapses data/demo/demo_synapses.json --positions data/demo/demo_positions.json
+        ''')
+    )
+    
+    parser.add_argument(
+        '--synapses', '-s',
+        type=str,
+        default=None,
+        help='Path to synapses JSON file (default: data/processed/synapses.json)'
+    )
+    
+    parser.add_argument(
+        '--positions', '-p',
+        type=str,
+        default=None,
+        help='Path to positions JSON file (default: data/processed/positions.json)'
+    )
+    
+    parser.add_argument(
+        '--output', '-o',
+        type=str,
+        default=None,
+        help='Output directory (default: outputs/)'
+    )
+    
+    parser.add_argument(
+        '--distance-metric', '-d',
+        type=str,
+        default=None,
+        choices=['euclidean', 'adp'],
+        help='Distance metric for binning: euclidean or adp (default: euclidean)'
+    )
+    
+    return parser.parse_args()
+
+# ============================================================================
 # MAIN PIPELINE
 # ============================================================================
 
 def main():
     """Run the complete analysis pipeline."""
     
+    # Parse command-line arguments
+    args = parse_arguments()
+    
+    # Apply command-line overrides to CONFIG
+    if args.distance_metric:
+        CONFIG['distance_metric'] = args.distance_metric
+    
     print("=" * 80)
     print("JHU-GNN: Graph Analysis Pipeline")
     print("=" * 80)
     
-    # Create output directory
-    output_path = Path(CONFIG['output_dir'])
-    output_path.mkdir(exist_ok=True)
+    # ========================================================================
+    # HANDLE CUSTOM DATA PATHS
+    # ========================================================================
+    
+    # Resolve synapse and position file paths
+    if args.synapses:
+        synapses_path = Path(args.synapses)
+        # If relative path, resolve relative to project root
+        if not synapses_path.is_absolute():
+            synapses_path = PROJECT_ROOT / synapses_path
+    else:
+        synapses_path = Path(CONFIG['data_dir']) / 'synapses.json'
+    
+    if args.positions:
+        positions_path = Path(args.positions)
+        # If relative path, resolve relative to project root
+        if not positions_path.is_absolute():
+            positions_path = PROJECT_ROOT / positions_path
+    else:
+        positions_path = Path(CONFIG['data_dir']) / 'positions.json'
+    
+    # Override output directory if provided
+    if args.output:
+        output_path = Path(args.output)
+        if not output_path.is_absolute():
+            output_path = PROJECT_ROOT / output_path
+    else:
+        output_path = Path(CONFIG['output_dir'])
+    
+    output_path.mkdir(parents=True, exist_ok=True)
     print(f"\nOutput directory: {output_path.absolute()}")
+    print(f"Synapses file: {synapses_path.absolute()}")
+    print(f"Positions file: {positions_path.absolute()}")
     
     # ========================================================================
     # 1. LOAD DATA
     # ========================================================================
     print("\n[1] Loading data...")
     try:
-        data_path = Path(CONFIG['data_dir'])
-        synapses = read_json(str(data_path / 'synapses.json'))
-        positions = read_json(str(data_path / 'positions.json'))
+        synapses = read_json(str(synapses_path))
+        positions = read_json(str(positions_path))
         print(f"  ✓ Loaded {len(synapses)} synapses")
         print(f"  ✓ Loaded positions for {len(positions)} neurons")
     except Exception as e:
@@ -149,33 +237,89 @@ def main():
     # ========================================================================
     print("\n[2] Preparing spatial features...")
     
-    # Compute pairwise distances
-    n = coords.shape[0]
-    distances = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            dist = np.linalg.norm(coords[i] - coords[j])
-            distances[i, j] = dist
-            distances[j, i] = dist
-    print(f"  ✓ Distance matrix computed: {distances.shape}")
+    # Load or compute distance matrix and feature list
+    if CONFIG['distance_metric'] == 'adp':
+        import pickle
+        adp_path = Path(CONFIG['data_dir']) / 'adp_data.pkl'
+        try:
+            with open(adp_path, 'rb') as f:
+                adp_data = pickle.load(f)
+            
+            # Extract ALL nodes from ADP data (much larger than neuron_ids)
+            all_adp_nodes = set(adp_data.keys())
+            for nbrs in adp_data.values():
+                all_adp_nodes |= set(nbrs.keys())
+            all_adp_nodes = list(all_adp_nodes)
+            print(f"  ✓ Extracted {len(all_adp_nodes)} nodes from ADP data")
+            
+            # Build feature_list and edge_indicator from ALL ADP pairs
+            # This matches the notebook's approach for proper probability calibration
+            edge_list = []
+            edge_indicator = []
+            feature_list = []
+            
+            for i, u in enumerate(all_adp_nodes):
+                for j, v in enumerate(all_adp_nodes):
+                    if i < j:
+                        # Get ADP value (check both directions)
+                        adp_val = None
+                        if u in adp_data and v in adp_data[u]:
+                            adp_val = adp_data[u][v]
+                        elif v in adp_data and u in adp_data[v]:
+                            adp_val = adp_data[v][u]
+                        
+                        # Only include if ADP value exists
+                        if adp_val is not None:
+                            edge_list.append((u, v))
+                            # Check if edge exists in GT (check both directions since GT is directed)
+                            has_edge = GT.has_edge(u, v) or GT.has_edge(v, u)
+                            edge_indicator.append(1 if has_edge else 0)
+                            feature_list.append(adp_val)
+            
+            edge_indicator = np.array(edge_indicator)
+            feature_list = np.array(feature_list)
+            print(f"  ✓ ADP feature list: {len(edge_list)} pairs, {edge_indicator.sum()} edges")
+            print(f"  ✓ Feature range: [{feature_list.min():.2f}, {feature_list.max():.2f}]")
+            
+            # Store all_adp_nodes and feature info for spatial null
+            spatial_null_nodes = all_adp_nodes
+            
+        except Exception as e:
+            print(f"  ✗ Error loading ADP data: {e}. Falling back to euclidean.")
+            CONFIG['distance_metric'] = 'euclidean'
+            spatial_null_nodes = None
     
-    # Create edge indicator and feature list
-    edge_list = []
-    edge_indicator = []
-    feature_list = []
-    
-    for i, u in enumerate(neuron_ids):
-        for j, v in enumerate(neuron_ids):
-            if i < j:
-                has_edge = GT.has_edge(u, v)
-                edge_list.append((u, v))
-                edge_indicator.append(1 if has_edge else 0)
-                feature_list.append(distances[i, j])
-    
-    edge_indicator = np.array(edge_indicator)
-    feature_list = np.array(feature_list)
-    print(f"  ✓ Edge indicator: {len(edge_list)} pairs, {edge_indicator.sum()} edges")
-    print(f"  ✓ Feature range: [{feature_list.min():.2f}, {feature_list.max():.2f}]")
+    # Fallback to euclidean if ADP not selected or failed
+    if CONFIG['distance_metric'] == 'euclidean':
+        # Compute pairwise euclidean distances
+        n = len(neuron_ids)
+        distances = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                dist = np.linalg.norm(coords[i] - coords[j])
+                distances[i, j] = dist
+                distances[j, i] = dist
+        
+        # Create edge indicator and feature list from neuron_ids only
+        edge_list = []
+        edge_indicator = []
+        feature_list = []
+        
+        for i, u in enumerate(neuron_ids):
+            for j, v in enumerate(neuron_ids):
+                if i < j:
+                    # Check both directions since GT is a directed graph
+                    has_edge = GT.has_edge(u, v) or GT.has_edge(v, u)
+                    edge_list.append((u, v))
+                    edge_indicator.append(1 if has_edge else 0)
+                    feature_list.append(distances[i, j])
+        
+        edge_indicator = np.array(edge_indicator)
+        feature_list = np.array(feature_list)
+        print(f"  ✓ Euclidean: examined {len(edge_list)} pair combinations")
+        print(f"  ✓ Edge indicator: {edge_indicator.sum()} edges out of {len(edge_list)} pairs")
+        print(f"  ✓ Feature range: [{feature_list.min():.2f}, {feature_list.max():.2f}]")
+        spatial_null_nodes = None
     
     # ========================================================================
     # 3. COMPUTE BINNING MODEL (for spatial null)
@@ -204,7 +348,11 @@ def main():
     for metric_name in CONFIG['metrics']:
         try:
             metric_fn = get_metric(metric_name)
-            gt_metrics[metric_name] = metric_fn(GT)
+            # Convert to undirected graph for triangles metric (not implemented for directed)
+            if metric_name == 'triangles':
+                gt_metrics[metric_name] = metric_fn(GT.to_undirected())
+            else:
+                gt_metrics[metric_name] = metric_fn(GT)
             print(f"  ✓ {metric_name}: {gt_metrics[metric_name]:.4f}")
         except Exception as e:
             print(f"  ✗ Error computing {metric_name}: {e}")
@@ -215,13 +363,28 @@ def main():
     if 'motif_comparison' in CONFIG['visualizations']:
         print("\n[5] Computing triadic motifs...")
         try:
-            # Get null model functions for motif comparison
-            null_fns = [get_null_model(name) for name in CONFIG['null_models'] 
-                       if name != 'spatial_null']  # Skip spatial for motif (no interface match yet)
+            # Build null model functions for motif comparison
+            # Convert spatial_null output to directed using to_directed()
+            motif_null_fns = []
+            for model_name in CONFIG['null_models']:
+                if model_name == 'spatial_null':
+                    # Convert spatial null (undirected) to directed for motif analysis
+                    spatial_null_fn = get_null_model(model_name)
+                    if bin_model:
+                        # Use prepared pair_features (includes all ADP pairs if ADP metric)
+                        pair_features = []
+                        for idx, (u, v) in enumerate(edge_list):
+                            pair_features.append((u, v, feature_list[idx]))
+                        # Wrapper converts undirected spatial_null to directed
+                        wrapped_spatial_null = lambda G, sp_null=spatial_null_fn, bm=bin_model, pf=pair_features: sp_null(G, bm, pf).to_directed()
+                        wrapped_spatial_null.__name__ = 'spatial_null'
+                        motif_null_fns.append(wrapped_spatial_null)
+                else:
+                    motif_null_fns.append(get_null_model(model_name))
             
             motif_summary = generate_motif_df(
                 GT,
-                null_fns,
+                motif_null_fns,
                 n=CONFIG['n_motif_samples']
             )
             
@@ -232,8 +395,9 @@ def main():
             
             # Plot motif comparison
             motif_plot_path = output_path / 'motif_comparison.png'
-            plt.figure(figsize=(14, 6))
-            plot_summary(motif_summary, null_fns)
+            plt.figure(figsize=(18, 7))
+            plot_summary(motif_summary, motif_null_fns)
+            plt.tight_layout()
             plt.savefig(motif_plot_path, dpi=150, bbox_inches='tight')
             plt.close()
             print(f"  ✓ Motif plot saved to {motif_plot_path}")
@@ -249,9 +413,26 @@ def main():
         # Get metric functions
         metric_fns = [get_metric(name) for name in CONFIG['metrics']]
         
-        # Get null model functions (exclude spatial for now)
-        null_fns = [get_null_model(name) for name in CONFIG['null_models'] 
-                   if name != 'spatial_null']
+        # Build null model functions list
+        null_fns = []
+        for model_name in CONFIG['null_models']:
+            if model_name == 'spatial_null':
+                # Create a wrapper that binds bin_model and pair_features to spatial null
+                spatial_null_fn = get_null_model(model_name)
+                if bin_model:
+                    # Use already-prepared pair_features (from ADP or euclidean)
+                    # For ADP: includes all available pairs from ADP data
+                    # For euclidean: includes all neuron_id pairs
+                    pair_features = []
+                    for idx, (u, v) in enumerate(edge_list):
+                        pair_features.append((u, v, feature_list[idx]))
+                    wrapped_spatial_null = lambda G, sp_null=spatial_null_fn, bm=bin_model, pf=pair_features: sp_null(G, bm, pf)
+                    wrapped_spatial_null.__name__ = 'spatial_null'
+                    null_fns.append(wrapped_spatial_null)
+                else:
+                    print(f"  ⚠ Skipping spatial_null: bin_model not available")
+            else:
+                null_fns.append(get_null_model(model_name))
         
         if null_fns:
             results = run_null_models(null_fns, metric_fns, GT, N=CONFIG['n_null_samples'])
@@ -304,6 +485,24 @@ def main():
     print("\nFiles generated:")
     for f in sorted(output_path.glob('*')):
         print(f"  - {f.name}")
+    
+    # Print metric summary if available
+    summary_path = output_path / 'metric_summary.csv'
+    if summary_path.exists():
+        print("\n" + "=" * 80)
+        print("Metric Summary")
+        print("=" * 80)
+        df = pd.read_csv(summary_path)
+        df = df.round(6)
+        # Remove stdev columns
+        df = df.drop(columns=[col for col in df.columns if 'stdev' in col])
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.width', None)
+        print(df.to_string(index=False))
+        pd.reset_option('display.max_columns')
+        pd.reset_option('display.max_colwidth')
+        pd.reset_option('display.width')
     print()
 
 if __name__ == '__main__':
