@@ -9,7 +9,7 @@ This pipeline performs unsupervised motif discovery on connectome graphs using G
 ```
 inrun/
 ├── main.py  
-├── run_pipeline.sh
+├── run_entire_pipeline.slurm
 │
 ├── models/
 │   ├── filter_graph.py  
@@ -47,7 +47,7 @@ python main.py \
 
 ### Submit as a SLURM job:
 ```bash
-sbatch run_pipeline.sh
+sbatch run_entire_pipeline.slurm
 ```
 
 Override SLURM config without editing the file:
