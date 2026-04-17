@@ -19,9 +19,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
-
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -72,20 +69,20 @@ CONFIG = {
 # IMPORTS
 # ============================================================================
 
-from graph_io import (
+from jhapl_gnn.graph_io import (
     load_synapses_from_pt, load_positions_from_pt, 
     build_synapse_digraph, export_graph_to_pt, export_positions_to_pt
 )
-from spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
-from binning.compute_bins import compute_bins, BinModel
-from null_models.wrappers import get_null_model, NULL_MODELS
-from metrics.count_metrics import count_tri, generate_motif_df, plot_summary
-from metrics.hub_spoke_metrics import (
+from jhapl_gnn.spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
+from jhapl_gnn.binning.compute_bins import compute_bins, BinModel
+from jhapl_gnn.null_models.wrappers import get_null_model, NULL_MODELS
+from jhapl_gnn.metrics.count_metrics import count_tri, generate_motif_df, plot_summary
+from jhapl_gnn.metrics.hub_spoke_metrics import (
     gini, coef_variation, mean_deg, max_deg, deg_assortativity
 )
-from metrics.clustering_metrics import clustering, transitivity, triangles
-from metrics.generators import run_null_models, summarize_results
-from config import N_BINS, N_NULLS, RANDOM_SEED
+from jhapl_gnn.metrics.clustering_metrics import clustering, transitivity, triangles
+from jhapl_gnn.metrics.generators import run_null_models, summarize_results
+from jhapl_gnn.config import N_BINS, N_NULLS, RANDOM_SEED
 
 # ============================================================================
 # METRIC REGISTRY
