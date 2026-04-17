@@ -175,6 +175,27 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# ============================================================================
+# Large Binary Files (>100MB) - Use Git LFS or store externally
+# ============================================================================
+# PyTorch models and data
+*.pt
+
+# Large JSON files
+data/processed/*.json
+!data/processed/demo_positions.json
+!data/processed/demo_synapses.json
+
+# Other large binary files
+*.pkl
+*.npy
+*.npz
+
+# Output files (generated during analysis)
+outputs/**/*.pt
+outputs/**/*.csv
+outputs/**/*.png
+
 # pytype static type analyzer
 .pytype/
 
@@ -213,4 +234,17 @@ marimo/_lsp/
 __marimo__/
 
 # Streamlit
-.streamlit/secrets.toml
+
+# Large data files - don't commit, use LFS or store locally
+data/processed/synapses.pt
+data/processed/synapses.json
+data/processed/positions.pt
+data/processed/positions.json
+data/processed/adjacency.json
+data/processed/all_neurons_positions.json
+data/processed/demo_synapses.pt
+data/processed/demo_positions.pt
+data/processed/exc_or_inh.json
+
+# Mark outputs as local only
+outputs/**/*.pt

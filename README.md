@@ -10,9 +10,32 @@ This project provides tools to:
 - **Compute metrics** including clustering, degree distribution, and motif z-scores
 - **Visualize** local subgraphs and comparative analyses
 
+### Data Format: PyTorch .pt Files
+
+This codebase uses **PyTorch `.pt` format** for all neural network data files for improved performance and ML compatibility. See [PYTORCH_MIGRATION.md](PYTORCH_MIGRATION.md) for:
+- Data format specifications
+- Migration guide for existing JSON files
+- Conversion utilities
+
 ## Project Structure
 
-### `src/binning/`
+This project uses **flat layout** for the Python package. The main source code is in the `jhapl_gnn/` directory.
+
+```
+jhapl-GNN/
+├── jhapl_gnn/              # Main package (flat layout)
+│   ├── binning/            # Spatial feature binning
+│   ├── metrics/            # Network analysis metrics
+│   ├── null_models/        # Null model generators
+│   ├── config.py           # Global configuration
+│   ├── graph_io.py         # Graph I/O operations
+│   └── spatial_analysis.py # Spatial utilities
+├── scripts/                # Executable scripts
+├── data/                   # Data files (input/processed)
+└── notebooks/              # Jupyter notebooks
+```
+
+### `jhapl_gnn/binning/`
 Spatial feature binning for edge probability estimation.
 
 **Key module:** `compute_bins.py`
@@ -21,7 +44,7 @@ Spatial feature binning for edge probability estimation.
 - `assign_bins()`: Assign feature values to bin indices
 - Supports any spatial feature (distance, ADP, etc.) with quantile or uniform binning
 
-### `src/metrics/`
+### `jhapl_gnn/metrics/`
 Network analysis metrics and comparative analysis.
 
 **Modules:**
@@ -44,7 +67,7 @@ Network analysis metrics and comparative analysis.
   - `run_null_models()`: Apply metrics to null model samples
   - `summarize_results()`: Compute mean/stdev comparisons
 
-### `src/null_models/`
+### `jhapl_gnn/null_models/`
 Random graph generators and unified null model interface.
 
 **Modules:**
@@ -64,13 +87,14 @@ Random graph generators and unified null model interface.
   - Registry: `NULL_MODELS` dict and `get_null_model(name)` function
   - Allows flexible iteration over multiple null models with consistent API
 
-### `src/`
+### `jhapl_gnn/` Core modules
 Core modules and utilities.
 
 **Key modules:**
 - `config.py`: Global configuration (N_BINS, N_NULLS, RANDOM_SEED)
-- `graph_io.py`: Graph I/O operations
-  - `read_json()`: Load data from JSON
+- `graph_io.py`: Graph I/O operations (PyTorch .pt format)
+  - `load_synapses_from_pt()`: Load synapse connectivity
+  - `load_positions_from_pt()`: Load neuron coordinates
   - `build_synapse_graph()`: Construct undirected graph
   - `build_synapse_digraph()`: Construct directed graph
 

@@ -5,7 +5,7 @@ This script processes a folder of compressed pickle files (.pbz2) containing
 NetworkX neuron graphs and extracts synapse connectivity information.
 
 Usage:
-    python extract_synapses.py ../data/raw/graph_exports ../data/processed/synapses.json
+    python extract_synapses.py ../data/raw/graph_exports ../data/processed/synapses.pt
     
     Or with defaults:
     python extract_synapses.py
@@ -13,7 +13,7 @@ Usage:
 
 import sys
 import os
-import json
+import torch
 import bz2
 import pickle
 from pathlib import Path
@@ -25,7 +25,7 @@ from typing import Dict, List, Tuple, Any
 
 # Default paths (relative to script location)
 DEFAULT_GRAPH_DIR = Path(__file__).parent.parent / 'data' / 'raw' / 'graph_exports'
-DEFAULT_OUTPUT_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'synapses.json'
+DEFAULT_OUTPUT_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'synapses.pt'
 
 
 # ============================================================================
@@ -273,11 +273,14 @@ def extract_synapses(graph_dir: Path, output_file: Path, verbose: bool = True) -
 
     print(f"Complete synapses (pre & post identified): {len(complete_synapses)}")
 
-    # Write output
+    # Write output in PyTorch format
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_file, 'w') as f:
-        json.dump(complete_synapses, f, indent=2)
+    synapses_data = {
+        'synapses': complete_synapses,
+    }
+    
+    torch.save(synapses_data, output_file)
 
     print(f"\n✓ Synapses written to {output_file.absolute()}")
     print(f"\nSummary:")

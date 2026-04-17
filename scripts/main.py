@@ -72,7 +72,10 @@ CONFIG = {
 # IMPORTS
 # ============================================================================
 
-from graph_io import read_json, build_synapse_digraph
+from graph_io import (
+    load_synapses_from_pt, load_positions_from_pt, 
+    build_synapse_digraph, export_graph_to_pt, export_positions_to_pt
+)
 from spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
 from binning.compute_bins import compute_bins, BinModel
 from null_models.wrappers import get_null_model, NULL_MODELS
@@ -119,11 +122,11 @@ def parse_arguments():
           Run with default data paths:
             python3 main.py
           
-          Use custom synapse and positions JSON files:
-            python3 main.py --synapses custom_synapses.json --positions custom_positions.json
+          Use custom synapse and positions .pt files:
+            python3 main.py --synapses custom_synapses.pt --positions custom_positions.pt
           
           Use paths relative to project root:
-            python3 main.py --synapses data/demo/demo_synapses.json --positions data/demo/demo_positions.json
+            python3 main.py --synapses data/demo/demo_synapses.pt --positions data/demo/demo_positions.pt
         ''')
     )
     
@@ -131,14 +134,14 @@ def parse_arguments():
         '--synapses', '-s',
         type=str,
         default=None,
-        help='Path to synapses JSON file (default: data/processed/synapses.json)'
+        help='Path to synapses .pt file (default: data/processed/synapses.pt)'
     )
     
     parser.add_argument(
         '--positions', '-p',
         type=str,
         default=None,
-        help='Path to positions JSON file (default: data/processed/positions.json)'
+        help='Path to positions .pt file (default: data/processed/positions.pt)'
     )
     
     parser.add_argument(
@@ -187,7 +190,7 @@ def main():
         if not synapses_path.is_absolute():
             synapses_path = PROJECT_ROOT / synapses_path
     else:
-        synapses_path = Path(CONFIG['data_dir']) / 'synapses.json'
+        synapses_path = Path(CONFIG['data_dir']) / 'synapses.pt'
     
     if args.positions:
         positions_path = Path(args.positions)
@@ -195,7 +198,7 @@ def main():
         if not positions_path.is_absolute():
             positions_path = PROJECT_ROOT / positions_path
     else:
-        positions_path = Path(CONFIG['data_dir']) / 'positions.json'
+        positions_path = Path(CONFIG['data_dir']) / 'positions.pt'
     
     # Override output directory if provided
     if args.output:
@@ -215,10 +218,10 @@ def main():
     # ========================================================================
     print("\n[1] Loading data...")
     try:
-        synapses = read_json(str(synapses_path))
-        positions = read_json(str(positions_path))
+        synapses = load_synapses_from_pt(str(synapses_path))
+        positions_data = load_positions_from_pt(str(positions_path))
         print(f"  ✓ Loaded {len(synapses)} synapses")
-        print(f"  ✓ Loaded positions for {len(positions)} neurons")
+        print(f"  ✓ Loaded positions for {len(positions_data)} neurons")
     except Exception as e:
         print(f"  ✗ Error loading data: {e}")
         return
@@ -228,8 +231,8 @@ def main():
     print(f"  ✓ Ground truth graph: {GT.number_of_nodes()} nodes, {GT.number_of_edges()} edges")
     
     # Prepare coordinate array
-    neuron_ids = list(positions.keys())
-    coords = np.array([positions[nid] for nid in neuron_ids])
+    neuron_ids = list(positions_data.keys())
+    coords = np.array([positions_data[nid] for nid in neuron_ids])
     print(f"  ✓ Coordinates shape: {coords.shape}")
     
     # ========================================================================
@@ -474,6 +477,24 @@ def main():
                 print(f"    Filtered to {len(sub_neurons)} neurons within radius {CONFIG['spatial_radius']}")
         except Exception as e:
             print(f"  ✗ Error in subgraph visualization: {e}")
+    
+    # ========================================================================
+    # 8. EXPORT RESULTS TO PYTORCH FORMAT
+    # ========================================================================
+    print("\n[8] Exporting results to PyTorch format...")
+    try:
+        # Export ground truth graph
+        gt_export_path = output_path / 'gt_graph.pt'
+        positions_dict = {nid: positions_data[nid] for nid in neuron_ids}
+        export_graph_to_pt(GT, gt_export_path, node_positions=positions_dict)
+        
+        # Export positions separately
+        positions_export_path = output_path / 'positions.pt'
+        export_positions_to_pt(positions_dict, positions_export_path)
+        
+        print(f"  ✓ PyTorch exports saved to output directory")
+    except Exception as e:
+        print(f"  ✗ Error exporting to PyTorch format: {e}")
     
     # ========================================================================
     # SUMMARY

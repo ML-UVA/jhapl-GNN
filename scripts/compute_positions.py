@@ -4,7 +4,7 @@ Extract neuron positions and compute pairwise distance graph.
 This script:
 1. Discovers all neuron IDs from graph_exports folder (by scanning .pbz2 files)
 2. Loads positions from pickle files for each neuron
-3. Saves positions to positions.json
+3. Saves positions to positions.pt (PyTorch format)
 4. Computes pairwise distances between all neurons
 5. Creates a NetworkX graph where edge weight = Euclidean distance
 6. Saves the distance graph in both GML (text) and Pickle (binary) formats
@@ -17,11 +17,11 @@ Usage:
     python3 compute_positions.py ../../demo_graph_exports
     
     # Custom output paths
-    python3 compute_positions.py ../../demo_graph_exports --positions custom_positions.json
+    python3 compute_positions.py ../../demo_graph_exports --positions custom_positions.pt
 """
 
 import sys
-import json
+import torch
 import math
 import argparse
 import numpy as np
@@ -33,9 +33,9 @@ from typing import Dict, List, Tuple, Optional
 # CONFIGURATION
 # ============================================================================
 
-DEFAULT_SYNAPSES_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'synapses.json'
+DEFAULT_SYNAPSES_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'synapses.pt'
 DEFAULT_GRAPH_DIR = Path(__file__).parent.parent / 'data' / 'raw' / 'graph_exports'
-DEFAULT_POSITIONS_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'positions.json'
+DEFAULT_POSITIONS_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'positions.pt'
 DEFAULT_DISTANCE_GRAPH_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'distance_graph.gml'
 
 # Distance threshold for creating edges (in spatial units)
@@ -407,19 +407,25 @@ def compute_positions_and_distances(synapses_file: Path,
         return {}, nx.Graph()
 
     # ========================================================================
-    # 3. SAVE POSITIONS TO JSON
+    # 3. SAVE POSITIONS TO PYTORCH FORMAT
     # ========================================================================
     print(f"\n[3] Saving positions...")
 
     positions_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Convert tuples to lists for JSON serialization
-    positions_json = {str(k): list(v) for k, v in positions.items()}
-
-    with open(positions_file, 'w') as f:
-        json.dump(positions_json, f, indent=2)
-
+    # Convert to PyTorch tensor format
+    node_ids = sorted(list(positions.keys()))
+    positions_array = np.array([positions[nid] for nid in node_ids])
+    positions_tensor = torch.tensor(positions_array, dtype=torch.float)
+    
+    positions_data = {
+        'positions': positions_tensor,
+        'node_ids': node_ids,
+    }
+    
+    torch.save(positions_data, positions_file)
     print(f"  ✓ Saved {len(positions)} positions to {positions_file.absolute()}")
+    print(f"    - Shape: {positions_tensor.shape}")
 
     # ========================================================================
     # 4. COMPUTE PAIRWISE DISTANCES
@@ -510,7 +516,7 @@ Examples:
         '--positions', '-p',
         type=str,
         default=None,
-        help='Output path for positions.json'
+        help='Output path for positions.pt'
     )
     
     parser.add_argument(
