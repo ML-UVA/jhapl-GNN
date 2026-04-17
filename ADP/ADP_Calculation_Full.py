@@ -6,7 +6,8 @@ from ADP.helper_functions import (
     build_kd_trees,
     calc_adp,
     build_global_kd_trees,
-    convert_adp)
+    convert_adp,
+    build_graph)
 
 
 def main():
@@ -54,7 +55,7 @@ def main():
 
     # Skeletonization
     time_start = time.time()
-    generate_skeleton_data(rel_neuron_graph_path)
+    generate_skeleton_data(rel_neuron_graph_path,rel_data_checkpoint_path)
     print(f"Skeletonization generation completed in {time.time() - time_start:.2f} seconds")
 
 
