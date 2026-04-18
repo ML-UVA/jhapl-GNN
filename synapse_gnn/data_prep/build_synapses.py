@@ -6,7 +6,6 @@ import numpy as np
 
 # Specific JHU APL imports required for decompression
 from datasci_tools import system_utils as su
-# import compat_numpy # Uncomment if required by your specific conda environment
 
 # --- CONFIGURATION LOADER ---
 def parse_args():
@@ -76,9 +75,12 @@ def extract_synapses(graph_dir="./graph_exports/", output_file="synapses.json"):
         json.dump(true_synapses, f, indent=4)
     print(f"Saved successfully to {output_file}")
 
-if __name__ == "__main__":
-    args = parse_args()
-    config = load_config(args.config)
+def main(config_path=None):
+    if config_path is None:
+        args = parse_args()
+        config_path = args.config
+        
+    config = load_config(config_path)
     
     # Extract cache directory from config to ensure consistency across the pipeline
     CACHE_DIR = config["paths"]["data_dir"]
@@ -88,3 +90,6 @@ if __name__ == "__main__":
     GRAPH_DIR = config["raw_data"]["neurons_directory"]
     
     extract_synapses(graph_dir=GRAPH_DIR, output_file=output_json)
+
+if __name__ == "__main__":
+    main()

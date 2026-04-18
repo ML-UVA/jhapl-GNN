@@ -8,3 +8,6 @@
 *.py[cod]
 *.cpython-312.pyc
 *.py[co]
+/cache_demo
+/evals_demo
+/saved_models_demo

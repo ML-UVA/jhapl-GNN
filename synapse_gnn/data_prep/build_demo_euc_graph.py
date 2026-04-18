@@ -12,11 +12,17 @@ def parse_args():
     parser.add_argument('--config', type=str, default="config.json")
     return parser.parse_args()
 
-def main():
-    args = parse_args()
-    with open(args.config, 'r') as f:
-        config = json.load(f)
+def main(config_path = None):
+    # If called from the command line, grab it from argparse
+    if config_path is None:
+        args = parse_args()
+        config_path = args.config
         
+    # Load the config using the path
+    print(f"Loading configuration from: {config_path}")
+    with open(config_path, 'r') as f:
+        config = json.load(f)     
+   
     CACHE_DIR = config["paths"]["data_dir"]
     SPATIAL_THRESHOLD = 100000 # 100 microns
     
