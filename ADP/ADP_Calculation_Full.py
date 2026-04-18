@@ -1,5 +1,6 @@
 import time
 import argparse
+import os
 
 from ADP.helper_functions import (
     generate_skeleton_data,
@@ -86,6 +87,14 @@ def main():
     time_start = time.time()
     build_graph(rel_data_checkpoint_path, threshold)
     print(f"Graph generation completed in {time.time() - time_start:.2f} seconds")
+
+    # DELETE everything except .pt files
+    for filename in os.listdir(rel_data_checkpoint_path):
+        file_path = os.path.join(rel_data_checkpoint_path, filename)
+
+        if os.path.isfile(file_path) and not filename.endswith(".pt"):
+            os.remove(file_path)
+            print(f"Deleted {file_path}")
 
 
 if __name__ == "__main__":
