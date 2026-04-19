@@ -73,6 +73,7 @@ def extract_synapses(graph_dir, output_file):
     }
     
     pt_output = output_file.replace('.json', '.pt')
+    os.makedirs(os.path.dirname(pt_output), exist_ok=True)
     torch.save(graph_dict, pt_output)
     
     print(f"Saved successfully to {pt_output}")

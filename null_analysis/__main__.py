@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 CONFIG = {
     # Data paths (relative to project root)
     'data_dir': PROJECT_ROOT / 'data' / 'processed',
-    'output_dir': PROJECT_ROOT / 'outputs',
+    'output_dir': PROJECT_ROOT / 'outputs' / 'null_analysis',
     'raw_graph_dir': PROJECT_ROOT / '..' / '..' / 'demo_graph_exports',  # Source .pbz2 neuron morphologies
     
     # Which null models to run
@@ -76,6 +76,7 @@ from data_prep.compute_positions import (
     compute_positions_and_distances,
     DEFAULT_DISTANCE_GRAPH_FILE as POSITIONS_DISTANCE_GRAPH_FILE,
 )
+from data_prep.build_synapses import extract_synapses
 from null_analysis.binning.compute_bins import compute_bins, BinModel
 from null_analysis.null_models.wrappers import get_null_model, NULL_MODELS
 from null_analysis.metrics.count_metrics import count_tri, generate_motif_df, plot_summary
@@ -212,9 +213,18 @@ def main():
     print(f"Synapses file: {synapses_path.absolute()}")
     print(f"Positions file: {positions_path.absolute()}")
 
-    # Auto-regenerate positions.pt from raw .pbz2 files if missing
+    # Auto-regenerate synapses.pt and positions.pt from raw .pbz2 files if missing
+    raw_graph_dir = CONFIG['raw_graph_dir']
+    if not synapses_path.exists():
+        print(f"\n  ⚠ {synapses_path.name} missing; regenerating from {raw_graph_dir}...")
+        extract_synapses(graph_dir=str(raw_graph_dir), output_file=str(synapses_path))
+        if not synapses_path.exists():
+            raise RuntimeError(
+                f"Regeneration of {synapses_path} failed; check that {raw_graph_dir} "
+                f"exists and contains .pbz2 neuron graphs."
+            )
+
     if not positions_path.exists():
-        raw_graph_dir = CONFIG['raw_graph_dir']
         print(f"\n  ⚠ {positions_path.name} missing; regenerating from {raw_graph_dir}...")
         compute_positions_and_distances(
             synapses_file=None,
@@ -504,8 +514,9 @@ def main():
         positions_dict = {nid: positions_data[nid] for nid in neuron_ids}
         export_graph_to_pt(GT, gt_export_path, node_positions=positions_dict)
         
-        # Export positions separately
-        positions_export_path = output_path / 'positions.pt'
+        # Export positions separately to the shared data/processed location
+        positions_export_path = CONFIG['data_dir'] / 'positions.pt'
+        positions_export_path.parent.mkdir(parents=True, exist_ok=True)
         export_positions_to_pt(positions_dict, positions_export_path)
         
         print(f"  ✓ PyTorch exports saved to output directory")
