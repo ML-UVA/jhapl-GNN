@@ -12,12 +12,18 @@ The datasets used to develop and validate these analyses were sourced from the M
 
 All data generated from the pipeline and analyzes are stored in the data folder.
 
-## Project Structure:
+## Entry points
 
-```text
-data/
-├── ADP/    # Calculated Axon-Dendrite proximity between every pair of neuron
-├── Community Detection/        # Detects communities in neuron graph
-├── Visualization/          # Visualization Tools
-├── datao      # Stores all data and checkpoint data
+Run from the repo root.
+
+```bash
+python -m synapse_gnn --build_data           # GraphSAGE GNN synapse predictor (first run: build dataset, then train)
+python -m synapse_gnn                        # Retrain GNN from cached dataset
+
+python -m null_analysis                      # Motif / null-model analysis (auto-regenerates missing synapses.pt / positions.pt)
+
+python -m ADP                                # Axon-dendrite proximity pipeline
+
+python -m data_prep.build_synapses           # Build data/processed/synapses.pt from raw .pbz2
+python -m data_prep.compute_positions        # Build data/processed/positions.pt + distance graph
 ```
