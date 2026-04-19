@@ -47,8 +47,8 @@ CONFIG = {
     # Which visualizations to generate
     'visualizations': [
         'motif_comparison',      # Requires: null models, triadic Census
-        'subgraph',              # Requires: positions
-        'metric_summary_table',  # Requires: metrics
+        # 'subgraph',            # Requires: positions (load separately if needed)
+        # 'metric_summary_table',  # Requires: metrics
     ],
     
     # Analysis parameters
@@ -238,10 +238,7 @@ def main():
     edge_indicator = []  # 1 if edge exists in GT, 0 otherwise
     feature_list = []  # distance values
     
-    for u, v, dist in zip(graph_data['edges'], graph_data['edge_weights']):
-        # Swap tuple if needed
-        if isinstance(u, (list, tuple)):
-            u, v = u
+    for (u, v), dist in zip(graph_data['edges'], graph_data['edge_weights']):
         
         # Check if edge exists in empirical graph (both directions)
         has_edge = GT.has_edge(u, v) or GT.has_edge(v, u)
@@ -262,11 +259,6 @@ def main():
     # ========================================================================
     # Binning model learns P(edge | distance_bin) from empirical graph
     # Used to generate spatial null models
-    # ========================================================================
-    # 3. COMPUTE BINNING MODEL (for spatial null)
-    # ========================================================================
-    # Binning model learns P(edge | distance_bin) from empirical graph
-    # Used to generate spatial null models
     if 'spatial_null' in CONFIG['null_models']:
         print("\n[3] Computing binning model for spatial null...")
         try:
@@ -278,8 +270,8 @@ def main():
             )
             print(f"  ✓ Binning model: {len(bin_model.bin_probs)} bins")
             # Print bin statistics
-            for i, (prob, count) in enumerate(zip(bin_model.bin_probs, bin_model.bin_counts)):
-                print(f"    Bin {i}: P(edge|bin)={prob:.3f}, n_pairs={count}")
+            for i, (prob, center) in enumerate(zip(bin_model.bin_probs, bin_model.bin_centers)):
+                print(f"    Bin {i}: P(edge|bin)={prob:.3f}, feature_center={center:.2f}")
         except Exception as e:
             print(f"  ✗ Error creating binning model: {e}")
             bin_model = None
@@ -366,17 +358,9 @@ def main():
                 # Create a wrapper that binds bin_model and pair_features to spatial null
                 spatial_null_fn = get_null_model(model_name)
                 if bin_model:
-                    # Use already-prepared pair_features (from ADP or euclidean)
-                    # For ADP: includes all available pairs from ADP data
-                    # For euclidean: includes all neuron_id pairs
-                    pair_features = []
-                    for idx, (u, v) in enumerate(edge_list):
-                        pair_features.append((u, v, feature_list[idx]))
                     wrapped_spatial_null = lambda G, sp_null=spatial_null_fn, bm=bin_model, pf=pair_features: sp_null(G, bm, pf)
                     wrapped_spatial_null.__name__ = 'spatial_null'
                     null_fns.append(wrapped_spatial_null)
-                else:
-                    print(f"  ⚠ Skipping spatial_null: bin_model not available")
             else:
                 null_fns.append(get_null_model(model_name))
         
@@ -427,18 +411,7 @@ def main():
     # Summary of results exported to output directory:
     # 
     # - metric_summary.csv: Quantitative comparison of ground truth vs. null models
-    #     For each metric M and null model N:
-    #       - GT_{M}: ground truth value
-    #       - {N}_mean, {N}_stdev: mean/stdev from N null samples
-    #       - {N}_zscore: (GT - mean) / stdev
-    #
-    # - motif_summary.csv: Triadic motif enrichment (if motif_comparison enabled)
-    #     For each of 16 triadic motifs:
-    #       - gt_count: observed count in ground truth
-    #       - model_name: null model ('ER', 'spatial_null', etc.)
-    #       - null_mean/null_stdev: stats across null models
-    #       - z_score: motif enrichment statistic
-    #
+    # - motif_summary.csv: Triadic motif count (if motif_comparison enabled)
     # - *_visualization.png: Plots for motif comparison and subgraph views
     #
     print("\n[8] Results summary")

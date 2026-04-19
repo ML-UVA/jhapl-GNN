@@ -5,6 +5,7 @@ Runs arbitrary metric functions on graphs generated from null model
 generators and compares their distributions to ground truth values.
 """
 
+import warnings
 import networkx as nx
 import pandas as pd
 import numpy as np
@@ -101,5 +102,7 @@ def summarize_results(GT: nx.Graph, results: dict, metrics: list):
         summary[f"stdev {metric.__name__}"] = [
             np.std([x[i] for x in results[m]]) for m in results
         ]
-    summary = pd.concat([true_res, summary], ignore_index=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=FutureWarning)
+        summary = pd.concat([true_res, summary], ignore_index=True)
     return summary

@@ -82,7 +82,7 @@ def compute_bins(feature_values, edge_indicator, n_bins=20, method="quantile"):
     else:
         raise ValueError("method must be 'quantile' or 'uniform'")
 
-    grouped = df.groupby("bin")
+    grouped = df.groupby("bin", observed=False)
 
     bin_probs = grouped["edge"].mean().values
     bin_centers = grouped["feature"].mean().values
