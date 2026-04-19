@@ -7,7 +7,7 @@ from scipy.spatial import cKDTree
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate Demo Euclidean Graph")
-    parser.add_argument('--config', type=str, default="config.json")
+    parser.add_argument('--config', type=str, default="synapse_gnn/config.json")
     return parser.parse_args()
 
 def main(config_path=None):

@@ -7,7 +7,7 @@ from datasci_tools import system_utils as su
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Extract ground-truth synapses")
-    parser.add_argument('--config', type=str, default="config.json")
+    parser.add_argument('--config', type=str, default="synapse_gnn/config.json")
     return parser.parse_args()
 
 def load_config(config_path):

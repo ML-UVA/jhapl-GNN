@@ -12,7 +12,7 @@ from neuron_morphology_tools import neuron_nx_stats as nxs
 # --- CONFIGURATION LOADER ---
 def parse_args():
     parser = argparse.ArgumentParser(description="Extract morphological features from raw graphs")
-    parser.add_argument('--config', type=str, default="config.json", help="Path to the JSON configuration file")
+    parser.add_argument('--config', type=str, default="synapse_gnn/config.json", help="Path to the JSON configuration file")
     return parser.parse_args()
 
 def load_config(config_path):

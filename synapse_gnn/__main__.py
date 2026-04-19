@@ -16,7 +16,7 @@ from synapse_gnn.data import spatial_split
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Config-Driven GraphSAGE Synapse Predictor Pipeline")
-    parser.add_argument('--config', type=str, default="config.json", help="Path to the JSON configuration file")
+    parser.add_argument('--config', type=str, default="synapse_gnn/config.json", help="Path to the JSON configuration file")
     parser.add_argument('--build_data', action='store_true', help="Run preprocessing, ground truth, and graph building before training")
     return parser.parse_args()
 
@@ -54,7 +54,7 @@ def main():
         test_data = torch.load(os.path.join(CACHE_DIR, "test_data.pt"), weights_only=False)
         print("Successfully loaded PyG Spatial Subgraphs.")
     except FileNotFoundError:
-        print(f"Error: train_data.pt or test_data.pt not found in {CACHE_DIR}. Run `python main.py --build_data` to generate the dataset.")
+        print(f"Error: train_data.pt or test_data.pt not found in {CACHE_DIR}. Run `python -m synapse_gnn --build_data` to generate the dataset.")
         sys.exit(1)
     
     use_weights = config["architecture"].get("use_edge_weights", True)

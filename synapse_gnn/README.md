@@ -14,7 +14,7 @@ All pipeline parameters are controlled via `config.json`. Update this file to se
 **2. Run the Pipeline**
 The entire pipeline (Data Loading -> Graph Masking -> Training -> Inductive Evaluation -> Visualization) is executed via a single entry point:
 ```bash
-python main.py
+python -m synapse_gnn
 ```
 
 *(Note: You can also use this package as a library by importing modules directly into your own code, e.g., `from synapse_gnn.models.architecture import SynapsePredictor`)*
@@ -23,7 +23,7 @@ python main.py
 
 ## 📊 Pipeline Outputs
 
-After running `main.py`, the pipeline will automatically generate the following in your configured output directories:
+After running `python -m synapse_gnn`, the pipeline will automatically generate the following in your configured output directories:
 
 * **Model Checkpoints:** Saved as `.pth` files in the configured `model_out` directory.
 * **Evaluation Metrics:** A JSON file containing ROC-AUC, PR-AUC, Brier Score, F1 Score, optimal threshold calculations, and confusion matrices.
@@ -33,9 +33,9 @@ After running `main.py`, the pipeline will automatically generate the following 
 
 ## 📁 Repository Structure
 
-* `main.py`: The primary execution script.
-* `config.json`: Master configuration file.
 * `synapse_gnn/`
+  * `__main__.py`: The primary execution script; run via `python -m synapse_gnn`.
+  * `config.json`: Master configuration file.
   * `data/`: Loaders for ingesting PyTorch edge/weight tensors and logic for spatial geographic masking.
   * `models/`: The GraphSAGE encoder and custom MLP decoder architectures.
   * `training/`: Core training loops, BCE loss calculations, and subgraph samplers.
