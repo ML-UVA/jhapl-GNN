@@ -69,20 +69,20 @@ CONFIG = {
 # IMPORTS
 # ============================================================================
 
-from jhapl_gnn.graph_io import (
-    load_synapses_from_pt, load_positions_from_pt, 
+from data_prep.graph_io import (
+    load_synapses_from_pt, load_positions_from_pt,
     build_synapse_digraph, export_graph_to_pt, export_positions_to_pt
 )
-from jhapl_gnn.spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
-from jhapl_gnn.binning.compute_bins import compute_bins, BinModel
-from jhapl_gnn.null_models.wrappers import get_null_model, NULL_MODELS
-from jhapl_gnn.metrics.count_metrics import count_tri, generate_motif_df, plot_summary
-from jhapl_gnn.metrics.hub_spoke_metrics import (
+from data_prep.spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
+from null_analysis.binning.compute_bins import compute_bins, BinModel
+from null_analysis.null_models.wrappers import get_null_model, NULL_MODELS
+from null_analysis.metrics.count_metrics import count_tri, generate_motif_df, plot_summary
+from null_analysis.metrics.hub_spoke_metrics import (
     gini, coef_variation, mean_deg, max_deg, deg_assortativity
 )
-from jhapl_gnn.metrics.clustering_metrics import clustering, transitivity, triangles
-from jhapl_gnn.metrics.generators import run_null_models, summarize_results
-from jhapl_gnn.config import N_BINS, N_NULLS, RANDOM_SEED
+from null_analysis.metrics.clustering_metrics import clustering, transitivity, triangles
+from null_analysis.metrics.generators import run_null_models, summarize_results
+from null_analysis.config import N_BINS, N_NULLS, RANDOM_SEED
 
 # ============================================================================
 # METRIC REGISTRY

@@ -5,11 +5,11 @@ This module processes NetworkX neuron graphs and extracts synapse connectivity
 information. Can be used as an importable module or run as a script.
 
 Usage as module:
-    from jhapl_gnn.extract_synapses import extract_synapses
+    from data_prep.extract_synapses import extract_synapses
     synapses = extract_synapses(graph_dir, distance_graph_pt, output_file)
 
 Usage as script:
-    python -m jhapl_gnn.extract_synapses ../data/raw/graph_exports \\
+    python -m data_prep.extract_synapses ../data/raw/graph_exports \\
         ../data/processed/distance_graph.pt ../data/processed/synapses.pt
 """
 
@@ -19,8 +19,6 @@ import bz2
 import pickle
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
-
-from . import config
 
 # ============================================================================
 # CONFIGURATION
@@ -336,8 +334,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m jhapl_gnn.extract_synapses ../data/raw/graph_exports
-  python -m jhapl_gnn.extract_synapses \\
+  python -m data_prep.extract_synapses ../data/raw/graph_exports
+  python -m data_prep.extract_synapses \\
     ../data/raw/graph_exports \\
     --distance-graph ../data/processed/distance_graph.pt \\
     --output ../data/processed/synapses.pt
