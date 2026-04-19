@@ -109,18 +109,22 @@ def get_metric(name):
 def parse_arguments():
     """Parse command-line arguments for custom data paths."""
     parser = argparse.ArgumentParser(
-        description='JHU-GNN: Graph Analysis Pipeline',
+        description='JHU-GNN: Null Model Analysis Pipeline',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(f'''
         Examples:
-          Run with default data paths:
+          Run with default data paths (synapses + distance_graph from data/processed/):
             python3 -m null_analysis
           
-          Use custom synapse and positions .pt files:
-            python3 -m null_analysis --synapses custom_synapses.pt --positions custom_positions.pt
+          Use custom files:
+            python3 -m null_analysis --synapses custom_synapses.pt --distance-graph custom_graph.pt
           
           Use paths relative to project root:
-            python3 -m null_analysis --synapses data/demo/demo_synapses.pt --positions data/demo/demo_positions.pt
+            python3 -m null_analysis --synapses data/demo/demo_synapses.pt --distance-graph data/demo/demo_graph.pt
+          
+          Note: Pre-compute distance graph first using:
+            python -m data_prep.compute_distance_graph --positions data/processed/positions.pt \\
+              --output data/processed/distance_graph.pt
         ''')
     )
     
@@ -132,10 +136,10 @@ def parse_arguments():
     )
     
     parser.add_argument(
-        '--positions', '-p',
+        '--distance-graph', '-g',
         type=str,
         default=None,
-        help='Path to positions .pt file (default: data/processed/positions.pt)'
+        help='Path to pre-computed distance_graph.pt file (default: data/processed/distance_graph.pt)'
     )
     
     parser.add_argument(
@@ -143,14 +147,6 @@ def parse_arguments():
         type=str,
         default=None,
         help='Output directory (default: outputs/)'
-    )
-    
-    parser.add_argument(
-        '--distance-metric', '-d',
-        type=str,
-        default=None,
-        choices=['euclidean', 'adp'],
-        help='Distance metric for binning: euclidean or adp (default: euclidean)'
     )
     
     return parser.parse_args()
@@ -165,19 +161,15 @@ def main():
     # Parse command-line arguments
     args = parse_arguments()
     
-    # Apply command-line overrides to CONFIG
-    if args.distance_metric:
-        CONFIG['distance_metric'] = args.distance_metric
-    
     print("=" * 80)
-    print("JHU-GNN: Graph Analysis Pipeline")
+    print("JHU-GNN: Null Model Analysis Pipeline")
     print("=" * 80)
     
     # ========================================================================
     # HANDLE CUSTOM DATA PATHS
     # ========================================================================
     
-    # Resolve synapse and position file paths
+    # Resolve synapse and distance graph file paths
     if args.synapses:
         synapses_path = Path(args.synapses)
         # If relative path, resolve relative to project root
@@ -186,13 +178,13 @@ def main():
     else:
         synapses_path = Path(CONFIG['data_dir']) / 'synapses.pt'
     
-    if args.positions:
-        positions_path = Path(args.positions)
+    if args.distance_graph:
+        distance_graph_path = Path(args.distance_graph)
         # If relative path, resolve relative to project root
-        if not positions_path.is_absolute():
-            positions_path = PROJECT_ROOT / positions_path
+        if not distance_graph_path.is_absolute():
+            distance_graph_path = PROJECT_ROOT / distance_graph_path
     else:
-        positions_path = Path(CONFIG['data_dir']) / 'positions.pt'
+        distance_graph_path = Path(CONFIG['data_dir']) / 'distance_graph.pt'
     
     # Override output directory if provided
     if args.output:
@@ -205,7 +197,7 @@ def main():
     output_path.mkdir(parents=True, exist_ok=True)
     print(f"\nOutput directory: {output_path.absolute()}")
     print(f"Synapses file: {synapses_path.absolute()}")
-    print(f"Positions file: {positions_path.absolute()}")
+    print(f"Distance graph file: {distance_graph_path.absolute()}")
     
     # ========================================================================
     # 1. LOAD DATA
@@ -213,116 +205,70 @@ def main():
     print("\n[1] Loading data...")
     try:
         synapses = load_synapses_from_pt(str(synapses_path))
-        positions_data = load_positions_from_pt(str(positions_path))
         print(f"  ✓ Loaded {len(synapses)} synapses")
-        print(f"  ✓ Loaded positions for {len(positions_data)} neurons")
     except Exception as e:
-        print(f"  ✗ Error loading data: {e}")
+        print(f"  ✗ Error loading synapses: {e}")
         return
     
-    # Build ground truth graph
+    # Build ground truth graph from synapses
     GT = build_synapse_digraph(synapses)
     print(f"  ✓ Ground truth graph: {GT.number_of_nodes()} nodes, {GT.number_of_edges()} edges")
     
-    # Prepare coordinate array
-    neuron_ids = list(positions_data.keys())
-    coords = np.array([positions_data[nid] for nid in neuron_ids])
-    print(f"  ✓ Coordinates shape: {coords.shape}")
+    # Load pre-computed distance graph (contains all spatial information)
+    try:
+        import torch
+        graph_data = torch.load(distance_graph_path, weights_only=False)
+        distance_nodes = graph_data['nodes']
+        print(f"  ✓ Loaded distance graph: {len(distance_nodes)} neurons, {len(graph_data['edges'])} distance pairs")
+    except Exception as e:
+        print(f"  ✗ Error loading distance graph: {e}")
+        return
     
     # ========================================================================
     # 2. PREPARE SPATIAL FEATURES (for spatial null model)
     # ========================================================================
-    print("\n[2] Preparing spatial features...")
+    # ========================================================================
+    # 2. PREPARE SPATIAL FEATURES FOR NULL MODELS
+    # ========================================================================
+    print("\n[2] Preparing pair features from distance graph...")
     
-    # Load or compute distance matrix and feature list
-    if CONFIG['distance_metric'] == 'adp':
-        import pickle
-        adp_path = Path(CONFIG['data_dir']) / 'adp_data.pkl'
-        try:
-            with open(adp_path, 'rb') as f:
-                adp_data = pickle.load(f)
-            
-            # Extract ALL nodes from ADP data (much larger than neuron_ids)
-            all_adp_nodes = set(adp_data.keys())
-            for nbrs in adp_data.values():
-                all_adp_nodes |= set(nbrs.keys())
-            all_adp_nodes = list(all_adp_nodes)
-            print(f"  ✓ Extracted {len(all_adp_nodes)} nodes from ADP data")
-            
-            # Build feature_list and edge_indicator from ALL ADP pairs
-            # This matches the notebook's approach for proper probability calibration
-            edge_list = []
-            edge_indicator = []
-            feature_list = []
-            
-            for i, u in enumerate(all_adp_nodes):
-                for j, v in enumerate(all_adp_nodes):
-                    if i < j:
-                        # Get ADP value (check both directions)
-                        adp_val = None
-                        if u in adp_data and v in adp_data[u]:
-                            adp_val = adp_data[u][v]
-                        elif v in adp_data and u in adp_data[v]:
-                            adp_val = adp_data[v][u]
-                        
-                        # Only include if ADP value exists
-                        if adp_val is not None:
-                            edge_list.append((u, v))
-                            # Check if edge exists in GT (check both directions since GT is directed)
-                            has_edge = GT.has_edge(u, v) or GT.has_edge(v, u)
-                            edge_indicator.append(1 if has_edge else 0)
-                            feature_list.append(adp_val)
-            
-            edge_indicator = np.array(edge_indicator)
-            feature_list = np.array(feature_list)
-            print(f"  ✓ ADP feature list: {len(edge_list)} pairs, {edge_indicator.sum()} edges")
-            print(f"  ✓ Feature range: [{feature_list.min():.2f}, {feature_list.max():.2f}]")
-            
-            # Store all_adp_nodes and feature info for spatial null
-            spatial_null_nodes = all_adp_nodes
-            
-        except Exception as e:
-            print(f"  ✗ Error loading ADP data: {e}. Falling back to euclidean.")
-            CONFIG['distance_metric'] = 'euclidean'
-            spatial_null_nodes = None
+    # Extract edge weights (distances) from pre-computed distance graph
+    # These are used for spatial null model binning
+    edge_list = []  # (u, v) pairs
+    edge_indicator = []  # 1 if edge exists in GT, 0 otherwise
+    feature_list = []  # distance values
     
-    # Fallback to euclidean if ADP not selected or failed
-    if CONFIG['distance_metric'] == 'euclidean':
-        # Compute pairwise euclidean distances
-        n = len(neuron_ids)
-        distances = np.zeros((n, n))
-        for i in range(n):
-            for j in range(i + 1, n):
-                dist = np.linalg.norm(coords[i] - coords[j])
-                distances[i, j] = dist
-                distances[j, i] = dist
+    for u, v, dist in zip(graph_data['edges'], graph_data['edge_weights']):
+        # Swap tuple if needed
+        if isinstance(u, (list, tuple)):
+            u, v = u
         
-        # Create edge indicator and feature list from neuron_ids only
-        edge_list = []
-        edge_indicator = []
-        feature_list = []
+        # Check if edge exists in empirical graph (both directions)
+        has_edge = GT.has_edge(u, v) or GT.has_edge(v, u)
         
-        for i, u in enumerate(neuron_ids):
-            for j, v in enumerate(neuron_ids):
-                if i < j:
-                    # Check both directions since GT is a directed graph
-                    has_edge = GT.has_edge(u, v) or GT.has_edge(v, u)
-                    edge_list.append((u, v))
-                    edge_indicator.append(1 if has_edge else 0)
-                    feature_list.append(distances[i, j])
-        
-        edge_indicator = np.array(edge_indicator)
-        feature_list = np.array(feature_list)
-        print(f"  ✓ Euclidean: examined {len(edge_list)} pair combinations")
-        print(f"  ✓ Edge indicator: {edge_indicator.sum()} edges out of {len(edge_list)} pairs")
-        print(f"  ✓ Feature range: [{feature_list.min():.2f}, {feature_list.max():.2f}]")
-        spatial_null_nodes = None
+        edge_list.append((u, v))
+        edge_indicator.append(1 if has_edge else 0)
+        feature_list.append(float(dist))
+    
+    edge_indicator = np.array(edge_indicator)
+    feature_list = np.array(feature_list)
+    
+    print(f"  ✓ Extracted {len(edge_list)} distance pairs")
+    print(f"  ✓ {edge_indicator.sum()} pairs have edges in empirical graph")
+    print(f"  ✓ Distance range: [{np.min(feature_list):.2f}, {np.max(feature_list):.2f}]")
     
     # ========================================================================
     # 3. COMPUTE BINNING MODEL (for spatial null)
     # ========================================================================
+    # Binning model learns P(edge | distance_bin) from empirical graph
+    # Used to generate spatial null models
+    # ========================================================================
+    # 3. COMPUTE BINNING MODEL (for spatial null)
+    # ========================================================================
+    # Binning model learns P(edge | distance_bin) from empirical graph
+    # Used to generate spatial null models
     if 'spatial_null' in CONFIG['null_models']:
-        print("\n[3] Computing binning model...")
+        print("\n[3] Computing binning model for spatial null...")
         try:
             bin_model = compute_bins(
                 feature_list,
@@ -330,7 +276,10 @@ def main():
                 n_bins=CONFIG['n_bins'],
                 method='quantile'
             )
-            print(f"  ✓ Binning model created with {len(bin_model.bin_probs)} bins")
+            print(f"  ✓ Binning model: {len(bin_model.bin_probs)} bins")
+            # Print bin statistics
+            for i, (prob, count) in enumerate(zip(bin_model.bin_probs, bin_model.bin_counts)):
+                print(f"    Bin {i}: P(edge|bin)={prob:.3f}, n_pairs={count}")
         except Exception as e:
             print(f"  ✗ Error creating binning model: {e}")
             bin_model = None
@@ -473,22 +422,27 @@ def main():
             print(f"  ✗ Error in subgraph visualization: {e}")
     
     # ========================================================================
-    # 8. EXPORT RESULTS TO PYTORCH FORMAT
+    # 8. EXPORT RESULTS
     # ========================================================================
-    print("\n[8] Exporting results to PyTorch format...")
-    try:
-        # Export ground truth graph
-        gt_export_path = output_path / 'gt_graph.pt'
-        positions_dict = {nid: positions_data[nid] for nid in neuron_ids}
-        export_graph_to_pt(GT, gt_export_path, node_positions=positions_dict)
-        
-        # Export positions separately
-        positions_export_path = output_path / 'positions.pt'
-        export_positions_to_pt(positions_dict, positions_export_path)
-        
-        print(f"  ✓ PyTorch exports saved to output directory")
-    except Exception as e:
-        print(f"  ✗ Error exporting to PyTorch format: {e}")
+    # Summary of results exported to output directory:
+    # 
+    # - metric_summary.csv: Quantitative comparison of ground truth vs. null models
+    #     For each metric M and null model N:
+    #       - GT_{M}: ground truth value
+    #       - {N}_mean, {N}_stdev: mean/stdev from N null samples
+    #       - {N}_zscore: (GT - mean) / stdev
+    #
+    # - motif_summary.csv: Triadic motif enrichment (if motif_comparison enabled)
+    #     For each of 16 triadic motifs:
+    #       - gt_count: observed count in ground truth
+    #       - model_name: null model ('ER', 'spatial_null', etc.)
+    #       - null_mean/null_stdev: stats across null models
+    #       - z_score: motif enrichment statistic
+    #
+    # - *_visualization.png: Plots for motif comparison and subgraph views
+    #
+    print("\n[8] Results summary")
+    print("  Analysis complete. Results saved to output directory:")
     
     # ========================================================================
     # SUMMARY
