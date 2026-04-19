@@ -49,10 +49,6 @@ def calc_adp(data_path,r=5000.0):
     time_start = time.time()
     
     for i, (bid, dend_tree) in enumerate(dend_blocks.items(),start=1):
-        if i%100 == 0:
-            print(f"iteration number: {i}")
-            print(f"time taken for last iteration batch: {time.time()-time_start}")
-            time_start = time.time()
         if dend_tree.n == 0:
             continue
         dend_owner_list = dend_owners[bid]

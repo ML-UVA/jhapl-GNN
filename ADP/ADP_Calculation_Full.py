@@ -94,7 +94,6 @@ def main():
 
         if os.path.isfile(file_path) and not filename.endswith(".pt"):
             os.remove(file_path)
-            print(f"Deleted {file_path}")
 
 
 if __name__ == "__main__":
