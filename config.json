@@ -3,15 +3,15 @@
         "neurons_directory": "/p/mlatuva/jhu-graph/graph_exports"
     },
     "paths": {
-        "data_dir": "./cache_spatial_test",
-        "model_out": "./saved_models_spatial",
-        "input_nx_graph": "euc_graph.gpickle",
-        "visualization_output": "evals_euc_graph_mlp_decoder_30000nm_full_pipeline"
+        "data_dir": "./cache_PT_Pipeline_EUC",
+        "model_out": "./saved_models_PT_Pipeline_EUC",
+        "input_nx_graph": "euc_graph",
+        "visualization_output": "evals_PT_Pipeline_EUC"
     },
     "graph_generation": {
         "spatial_threshold_nm": 30000,
         "adp_threshold": 0.0,
-        "load_edge_weights": true
+        "load_edge_weights": false
     },
     "graph_conversion": {
         "make_undirected": true
@@ -24,22 +24,22 @@
         "in_channels": 8,
         "hidden_dim": 128,
         "selected_features": [0,1,2,3,4,5,6,7],
-        "use_edge_weights": true
+        "spatial_features": [8, 9, 10]
     },
     "training": {
         "epochs": 50,
         "learning_rate": 0.001,
         "steps_per_epoch": 100,
         "train_node_sample_size": 8000,
-        "validation_averaging_runs": 5,
         "validation_node_sample_size": 8000,
-        "log_file_name": "training_log_adp_sweep.txt"
+        "validation_averaging_runs": 5,
+        "log_file_name": "training_log_PT_pipeline_EUC.txt"
     },
     "evaluation": {
         "test_node_sample_size": 15000,
-        "test_aggregation_runs": 10
+        "test_aggregation_runs": 5
     },
     "logging": {
-        "log_file_name": "training_log_adp_graph_30000nm.txt"
+        "log_file_name": "training_log_euc_graph_30000nm_PT_Pipeline_EUC.txt"
     }
 }
