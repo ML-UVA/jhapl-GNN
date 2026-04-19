@@ -1,12 +1,9 @@
 """
-Main pipeline script for neural network motif analysis.
+Entry point for the null_analysis motif pipeline.
 
-This script runs the complete analysis pipeline with configurable options for
-null models, metrics, and visualizations.
-
-CONFIGURATION
-=============
-Edit the CONFIG section below to customize which analyses to run.
+Runs the complete analysis (null models, metrics, visualizations) when invoked
+as `python -m null_analysis` from the project root. Edit the CONFIG dict below
+to customize which analyses to run.
 """
 
 import sys
@@ -117,13 +114,13 @@ def parse_arguments():
         epilog=textwrap.dedent(f'''
         Examples:
           Run with default data paths:
-            python3 main.py
+            python3 -m null_analysis
           
           Use custom synapse and positions .pt files:
-            python3 main.py --synapses custom_synapses.pt --positions custom_positions.pt
+            python3 -m null_analysis --synapses custom_synapses.pt --positions custom_positions.pt
           
           Use paths relative to project root:
-            python3 main.py --synapses data/demo/demo_synapses.pt --positions data/demo/demo_positions.pt
+            python3 -m null_analysis --synapses data/demo/demo_synapses.pt --positions data/demo/demo_positions.pt
         ''')
     )
     
