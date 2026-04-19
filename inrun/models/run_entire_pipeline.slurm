@@ -53,7 +53,7 @@ OUTPUT_DIR="${OUTPUT_DIR:-results}"
 
 source ~/.bashrc
 module load miniforge/25.3.1-py3.12
-conda activate edgegnn
+conda activate condaEnv
 
 mkdir -p logs
 mkdir -p "${OUTPUT_DIR}"

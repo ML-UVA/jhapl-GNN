@@ -8,7 +8,7 @@
 #SBATCH --error=subgraph1.err
 
 module load miniforge
-conda activate edgegnn
+conda activate condaEnv
 
 cd /p/mlatuva/jhu-graph/sidhya/jhapl-GNN/inrun/models
 
