@@ -178,6 +178,9 @@ dmypy.json
 # ============================================================================
 # Large Binary Files (>100MB) - Use Git LFS or store externally
 # ============================================================================
+# Graph files (can be very large)
+*.graphml
+
 # PyTorch models and data
 *.pt
 
