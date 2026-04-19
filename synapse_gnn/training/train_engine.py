@@ -155,17 +155,34 @@ def validate_step(model, x_global, edge_index_test, cands_test, device, weights_
     try: return roc_auc_score(y_true, y_scores), f1_score(y_true, (y_scores >= 0.5).astype(int), zero_division=0)
     except: return 0.0, 0.0
 
-def run_training(model, data_dict, config, device):
+def run_training(model, train_data, test_data, config, device):
+    """
+    Updated to ingest PyTorch Geometric Data objects (train_data, test_data)
+    instead of the legacy data_dict.
+    """
     optimizer = torch.optim.Adam(model.parameters(), lr=config["training"]["learning_rate"])
     
     selected_features = config["architecture"].get("selected_features", [0, 1, 2, 3, 4, 5, 6, 7])
-    x_morph = data_dict["x_raw"][:, selected_features].to(device)
     
+    # 1. Extract node features
+    x_morph = train_data.x[:, selected_features].to(device)
+    
+    # 2. Extract ADP Weights (Crucial: PyG edge_attr is 2D [E, 1], we MUST squeeze it to 1D)
+    train_weights = train_data.edge_attr.squeeze(-1) if train_data.edge_attr is not None else None
+    test_weights = test_data.edge_attr.squeeze(-1) if test_data.edge_attr is not None else None
+
+    # 3. Map PyG Attributes to Legacy Variable Names
+    train_cands = train_data.edge_index             # Structural ADP Graph
+    train_edges = train_data.edge_label_index       # Ground Truth Synapses
+    
+    test_cands = test_data.edge_index               
+    test_edges = test_data.edge_label_index         
+
     model_out = config["paths"]["model_out"]
-    graph_type = os.path.splitext(config["paths"]["input_nx_graph"])[0]
+    graph_type = "adp_graph" # Or dynamic extraction from config
     thresh_nm = config["graph_generation"]["spatial_threshold_nm"]
     
-    weight_tag = "_with_continuous_weights" if data_dict["train_weights"] is not None else ""
+    weight_tag = "_with_continuous_weights" if train_weights is not None else ""
     MODEL_SAVE_PATH = os.path.join(model_out, f"best_model_{graph_type}{weight_tag}_{thresh_nm}nm.pth")
 
     best_val_auc = 0.0
@@ -175,12 +192,14 @@ def run_training(model, data_dict, config, device):
     for epoch in range(1, config["training"]["epochs"] + 1):
         total_loss = 0
         for _ in range(config["training"]["steps_per_epoch"]):
-            total_loss += train_step(model, x_morph, data_dict["train_edges"], data_dict["train_cands"], 
-                                     optimizer, device, weights_train=data_dict["train_weights"], 
+            # Pass mapped variables to the original train_step
+            total_loss += train_step(model, x_morph, train_edges, train_cands, 
+                                     optimizer, device, weights_train=train_weights, 
                                      node_sample_size=config["training"]["train_node_sample_size"])
         
-        val_aucs, val_f1s = zip(*[validate_step(model, x_morph, data_dict["test_edges"], data_dict["test_cands"], 
-                                                device, weights_test=data_dict["test_weights"], 
+        # Pass mapped variables to the original validate_step
+        val_aucs, val_f1s = zip(*[validate_step(model, x_morph, test_edges, test_cands, 
+                                                device, weights_test=test_weights, 
                                                 node_sample_size=config["training"]["validation_node_sample_size"]) 
                                   for _ in range(config["training"]["validation_averaging_runs"])])
         avg_auc, avg_f1 = np.mean(val_aucs), np.mean(val_f1s)

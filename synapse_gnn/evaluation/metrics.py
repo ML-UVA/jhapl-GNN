@@ -3,11 +3,9 @@ import json
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, roc_auc_score, average_precision_score, brier_score_loss, precision_recall_curve
-
-# Correctly import the helper from train_engine!
 from synapse_gnn.training.train_engine import get_random_subgraph
 
-def export_metrics(y_true, y_scores, config, data_dict):
+def export_metrics(y_true, y_scores, config, train_data):
     try:
         auc = roc_auc_score(y_true, y_scores)
         pr_auc = average_precision_score(y_true, y_scores)
@@ -44,31 +42,39 @@ def export_metrics(y_true, y_scores, config, data_dict):
         "confusion_matrix": {"tn": int(cm[0,0]), "fp": int(cm[0,1]), "fn": int(cm[1,0]), "tp": int(cm[1,1])}
     }
     
-    weight_tag = "_with_continuous_weights" if data_dict["train_weights"] is not None else ""
+    # Check if weights exist in the train_data object
+    weight_tag = "_with_continuous_weights" if train_data.edge_attr is not None else ""
     json_out = os.path.join(config["paths"]["visualization_output"], f"metrics_{graph_type}{weight_tag}_{thresh_nm}nm.json")
     
     with open(json_out, 'w') as f:
         json.dump(results, f, indent=4)
     print(f"\nFinal Metrics exported to: {json_out}")
 
+
 @torch.no_grad()
-def run_inductive_evaluation(model, model_path, data_dict, config, device):
+def run_inductive_evaluation(model, model_path, train_data, test_data, config, device):
     print("\nRunning Inductive Analysis on Test Set...")
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=False))
     model.eval()
     
     selected_features = config["architecture"].get("selected_features", [0, 1, 2, 3, 4, 5, 6, 7])
-    num_nodes_total = data_dict["x_raw"].size(0)
+    
+    # 1. Unpack the PyG Test Data Object
+    x_raw = test_data.x
+    test_edges = test_data.edge_label_index
+    test_cands = test_data.edge_index
+    test_weights = test_data.edge_attr.squeeze(-1) if test_data.edge_attr is not None else None
+    num_nodes_total = x_raw.size(0)
+
     all_y_true, all_y_scores = [], []
 
     for _ in range(config["evaluation"]["test_aggregation_runs"]):
         local_test_edges, local_test_cands, node_indices, local_weights, local_cand_weights = get_random_subgraph(
-            data_dict["test_edges"], data_dict["test_cands"], num_nodes_total, weights_cpu=data_dict["test_weights"], 
+            test_edges, test_cands, num_nodes_total, weights_cpu=test_weights, 
             sample_size=config["evaluation"]["test_node_sample_size"])
             
         if local_test_edges.size(1) == 0: continue
         
-        # --- NEW: Move everything to the GPU before indexing! ---
         local_test_edges = local_test_edges.to(device)
         local_test_cands = local_test_cands.to(device)
         if local_weights is not None: local_weights = local_weights.to(device)
@@ -78,12 +84,11 @@ def run_inductive_evaluation(model, model_path, data_dict, config, device):
         perm = torch.randperm(num_edges, device=device)
         split_idx = int(num_edges * 0.5)
         
-        # Slicing now happens safely on the GPU
         msg_edges = local_test_edges[:, perm[split_idx:]]
         target_edges = local_test_edges[:, perm[:split_idx]]
         msg_weights = local_weights[perm[split_idx:]] if local_weights is not None else None
         
-        batch_x = data_dict["x_raw"][node_indices][:, selected_features].to(device)
+        batch_x = x_raw[node_indices][:, selected_features].to(device)
         z = model.encode(batch_x, msg_edges, edge_weight=msg_weights) 
         
         pos_src, pos_dst = target_edges[0], target_edges[1]            
@@ -113,4 +118,4 @@ def run_inductive_evaluation(model, model_path, data_dict, config, device):
         all_y_true.append(np.concatenate([np.ones(num_pos), np.zeros(neg_src.size(0))]))
 
     if all_y_true:
-        export_metrics(np.concatenate(all_y_true), np.concatenate(all_y_scores), config, data_dict)
+        export_metrics(np.concatenate(all_y_true), np.concatenate(all_y_scores), config, train_data)

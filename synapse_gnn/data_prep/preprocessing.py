@@ -181,11 +181,13 @@ def build_node_features(neuron_ids, graph_dir, num_workers=None):
 # ---------------------------------------------------------
 # EXECUTION BLOCK
 # ---------------------------------------------------------
-if __name__ == "__main__":
-    
+def main(config_path=None):
     # 1. Load the Config
-    args = parse_args()
-    config = load_config(args.config)
+    if config_path is None:
+        args = parse_args()
+        config_path = args.config
+        
+    config = load_config(config_path)
     
     # 2. Extract Paths Dynamically
     GRAPH_DIR = config["raw_data"]["neurons_directory"]
@@ -224,3 +226,6 @@ if __name__ == "__main__":
         print("\nPreprocessing finished successfully. You are ready to build the adjacency graph.")
     else:
         print("\nPreprocessing failed. No features were extracted.")
+
+if __name__ == "__main__":
+    main()

@@ -2,9 +2,13 @@
 /cache_spatial
 /*evals_*_*/
 /cache_spatial_test
-
+*.pt
 # Ignore Python compiled files globally
 **/__pycache__/
 *.py[cod]
 *.cpython-312.pyc
 *.py[co]
+/cache_demo
+/evals_demo
+/saved_models_demo
+/cache_PT_Pipeline_EUC
