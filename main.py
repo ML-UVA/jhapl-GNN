@@ -54,7 +54,7 @@ def main():
         test_data = torch.load(os.path.join(CACHE_DIR, "test_data.pt"), weights_only=False)
         print("Successfully loaded PyG Spatial Subgraphs.")
     except FileNotFoundError:
-        print("Error: train_data.pt or test_data.pt not found. Did you run spatial_split.py?")
+        print(f"Error: train_data.pt or test_data.pt not found in {CACHE_DIR}. Run `python main.py --build_data` to generate the dataset.")
         sys.exit(1)
     
     use_weights = config["architecture"].get("use_edge_weights", True)
