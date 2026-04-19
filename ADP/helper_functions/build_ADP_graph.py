@@ -2,35 +2,55 @@ import pickle
 import argparse
 import networkx as nx
 import os
+import torch
 
 
 def build_graph(base_path, threshold):
+    neuron_ids_path = os.path.join(base_path, "neuron_ids.pkl")
+    with open(neuron_ids_path,"rb") as f:
+        neuron_ids = pickle.load(f)
     input_file = os.path.join(base_path, "adp_data.pkl")
+    edges = [[],[]]
+    edge_values = []
+    index_values = {}
 
     output_file = os.path.join(
         base_path,
-        f"adp_graph_threshold_{threshold}.pkl"
+        f"adp_graph_threshold_{threshold}.pt"
     )
 
     with open(input_file, "rb") as f:
         adp_dict = pickle.load(f)
+    
+
+    for i,neuron_id in enumerate(neuron_ids):
+        index_values[neuron_id]=i
 
     print(f"Loaded ADP dictionary from {input_file}")
 
-    G = nx.DiGraph()
-
     for a, targets in adp_dict.items():
         for b, adp in targets.items():
+            a_index = index_values[a]
+            b_index = index_values[b]
             if adp >= threshold:
-                G.add_edge(b, a, adp=adp)
+                edges[0].append(a_index)
+                edges[1].append(b_index)
+                edge_values.append(adp)
+    
+    torch_edges=torch.tensor(edges,dtype=torch.long)
+    torch_edge_values = torch.tensor(edge_values,dtype=torch.float)
+    
+    output = {}
+    output['edge_index'] = torch_edges
+    output['edge_attr']=torch_edge_values
+    output['node_ids'] = neuron_ids
+
 
     print("Graph built")
-    print("Nodes:", G.number_of_nodes())
-    print("Edges:", G.number_of_edges())
+    print("Nodes:", len(neuron_ids))
+    print("Edges:", len(edge_values))
 
-    with open(output_file, "wb") as f:
-        pickle.dump(G, f)
-
+    torch.save(output,output_file)
     print(f"Graph saved to {output_file}")
 
 

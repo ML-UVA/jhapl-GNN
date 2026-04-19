@@ -275,6 +275,7 @@ data/*
 
 # Ignore everything inside graph_exports
 data/graph_exports/*
+demo_data/*
 
 # Python junk
 __pycache__/

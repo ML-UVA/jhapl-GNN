@@ -19,13 +19,14 @@ import numpy as np
 
 
 
-def generate_skeleton_data(neuron_directory):
+def generate_skeleton_data(neuron_directory, rel_data_checkpoint_path):
     """Generate skeletonization data from neuron graph exports."""
 
     files = [f for f in os.listdir(neuron_directory) if os.path.isfile(os.path.join(neuron_directory, f)) and f.endswith(".pbz2")]
 
 
     final_skeletonization_dict = {}
+    neuron_ids = []
 
 
     time_start = time.time()
@@ -35,6 +36,9 @@ def generate_skeleton_data(neuron_directory):
         path = os.path.join(neuron_directory, file)
         fname = os.path.basename(path)
         neuron_id = "_".join(fname.split("_")[0:2])
+
+        if neuron_id not in neuron_ids:
+            neuron_ids.append(neuron_id)
 
         with bz2.open(path, 'rb') as f:
             G = pickle.load(f)
@@ -66,7 +70,9 @@ def generate_skeleton_data(neuron_directory):
     print(f"Total number of neurons in skeletonization data = {len(final_skeletonization_dict)}")
 
 
-    out_path = os.path.join("data", "skeletonization_data_simple.pkl")
+    out_path = os.path.join(rel_data_checkpoint_path, "skeletonization_data_simple.pkl")
     with open(out_path, "wb") as f:
         pickle.dump(final_skeletonization_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
-    
+    out_path = os.path.join(rel_data_checkpoint_path, "neuron_ids.pkl")
+    with open(out_path, "wb") as f:
+        pickle.dump(neuron_ids, f, protocol=pickle.HIGHEST_PROTOCOL)
