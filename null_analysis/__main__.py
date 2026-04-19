@@ -27,6 +27,7 @@ CONFIG = {
     # Data paths (relative to project root)
     'data_dir': PROJECT_ROOT / 'data' / 'processed',
     'output_dir': PROJECT_ROOT / 'outputs',
+    'raw_graph_dir': PROJECT_ROOT / '..' / '..' / 'demo_graph_exports',  # Source .pbz2 neuron morphologies
     
     # Which null models to run
     'null_models': [
@@ -71,6 +72,10 @@ from data_prep.graph_io import (
     build_synapse_digraph, export_graph_to_pt, export_positions_to_pt
 )
 from data_prep.spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
+from data_prep.compute_positions import (
+    compute_positions_and_distances,
+    DEFAULT_DISTANCE_GRAPH_FILE as POSITIONS_DISTANCE_GRAPH_FILE,
+)
 from null_analysis.binning.compute_bins import compute_bins, BinModel
 from null_analysis.null_models.wrappers import get_null_model, NULL_MODELS
 from null_analysis.metrics.count_metrics import count_tri, generate_motif_df, plot_summary
@@ -206,7 +211,24 @@ def main():
     print(f"\nOutput directory: {output_path.absolute()}")
     print(f"Synapses file: {synapses_path.absolute()}")
     print(f"Positions file: {positions_path.absolute()}")
-    
+
+    # Auto-regenerate positions.pt from raw .pbz2 files if missing
+    if not positions_path.exists():
+        raw_graph_dir = CONFIG['raw_graph_dir']
+        print(f"\n  ⚠ {positions_path.name} missing; regenerating from {raw_graph_dir}...")
+        compute_positions_and_distances(
+            synapses_file=None,
+            graph_dir=raw_graph_dir,
+            positions_file=positions_path,
+            distance_graph_file=POSITIONS_DISTANCE_GRAPH_FILE,
+            verbose=False,
+        )
+        if not positions_path.exists():
+            raise RuntimeError(
+                f"Regeneration of {positions_path} failed; check that {raw_graph_dir} "
+                f"exists and contains .pbz2 neuron graphs."
+            )
+
     # ========================================================================
     # 1. LOAD DATA
     # ========================================================================

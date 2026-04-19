@@ -3,15 +3,20 @@ import json
 import torch
 from torch_geometric.data import Data
 
-def load_pyg_data(cache_dir, graph_filename="euc_graph.pt", labels_filename="synapses.pt"):
+def load_pyg_data(cache_dir, graph_filename="euc_graph.pt", labels_filename="synapses.pt", labels_path=None):
     """
     Loads node features, structural edges, and ground truth labels from .pt files
     and securely maps them into a single PyTorch Geometric Data object.
+
+    `labels_path`, if provided, overrides `os.path.join(cache_dir, labels_filename)` —
+    used so shared ground-truth files (e.g. data/processed/synapses.pt) live outside
+    any single workstream's cache directory.
     """
     features_path = os.path.join(cache_dir, "x_features.pt")
     mapping_path = os.path.join(cache_dir, "node_mapping.json")
     graph_path = os.path.join(cache_dir, graph_filename)
-    labels_path = os.path.join(cache_dir, labels_filename)
+    if labels_path is None:
+        labels_path = os.path.join(cache_dir, labels_filename)
 
     # ---------------------------------------------------------
     # 1. Load Node Features and ID Mapping

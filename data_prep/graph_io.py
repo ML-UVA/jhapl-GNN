@@ -33,23 +33,18 @@ def load_synapses_from_pt(filename):
     """
     Load synapse data from PyTorch .pt file.
 
-    Expected .pt file contains a dict with 'synapses' key containing
-    a dict of {synapse_id: [[source, target], ...], ...}
-
-    Parameters
-    ----------
-    filename : str or Path
-        Path to synapses .pt file.
-
-    Returns
-    -------
-    dict
-        Synapse data dictionary.
+    Expects the `{edge_index: LongTensor[2, N], node_ids: list[str]}` schema
+    produced by `data_prep.build_synapses`, and returns a dict
+    `{synapse_index: [[source, target]]}` for callers that want the
+    legacy shape (e.g. `build_synapse_digraph`).
     """
     data = load_pt(filename)
-    if isinstance(data, dict) and 'synapses' in data:
-        return data['synapses']
-    return data
+    edge_index = data['edge_index']
+    node_ids = data['node_ids']
+    return {
+        i: [[node_ids[int(src)], node_ids[int(tgt)]]]
+        for i, (src, tgt) in enumerate(edge_index.t().tolist())
+    }
 
 
 def load_positions_from_pt(filename):
@@ -106,7 +101,8 @@ def build_synapse_digraph(data):
     and builds a directed NetworkX graph where edges preserve synaptic
     directionality from source to target neuron.
 
-    Expected data structure: {synapse_id: [[source, target], ...], ...}
+    Expected data structure: {synapse_key: [[source, target], ...], ...}
+    (as produced by `load_synapses_from_pt`).
 
     Returns
     -------

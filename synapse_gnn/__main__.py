@@ -9,7 +9,7 @@ from synapse_gnn.training.train_engine import run_training
 from synapse_gnn.evaluation.metrics import run_inductive_evaluation
 from synapse_gnn.evaluation.visualizations import generate_all_visualizations
 from synapse_gnn.data_prep import preprocessing
-from synapse_gnn.data_prep import build_synapses
+from data_prep import build_synapses
 from synapse_gnn.data_prep import build_demo_euc_graph
 from synapse_gnn.data import spatial_split
 

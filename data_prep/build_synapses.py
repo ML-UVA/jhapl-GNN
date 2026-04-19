@@ -84,12 +84,12 @@ def main(config_path=None):
         config_path = args.config
         
     config = load_config(config_path)
-    
-    CACHE_DIR = config["paths"]["data_dir"]
-    # Change target output to .pt
-    output_pt = os.path.join(CACHE_DIR, "synapses.pt")
+
+    OUTPUT_DIR = "data/processed"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_pt = os.path.join(OUTPUT_DIR, "synapses.pt")
     GRAPH_DIR = config["raw_data"]["neurons_directory"]
-    
+
     extract_synapses(graph_dir=GRAPH_DIR, output_file=output_pt)
 
 if __name__ == "__main__":

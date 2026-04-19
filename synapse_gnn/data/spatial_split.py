@@ -21,7 +21,7 @@ def generate_spatial_masks_and_stitch(config):
     
     # 1. Load the unified Master Data Object
     try:
-        data = load_pyg_data(CACHE_DIR, graph_filename=graph_filename, labels_filename="synapses.pt")
+        data = load_pyg_data(CACHE_DIR, graph_filename=graph_filename, labels_path="data/processed/synapses.pt")
     except Exception as e:
         raise RuntimeError(f"Failed to load master Data object: {e}")
         
