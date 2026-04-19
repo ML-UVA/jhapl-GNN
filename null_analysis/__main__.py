@@ -47,8 +47,7 @@ CONFIG = {
     # Which visualizations to generate
     'visualizations': [
         'motif_comparison',      # Requires: null models, triadic Census
-        # 'subgraph',            # Requires: positions (load separately if needed)
-        # 'metric_summary_table',  # Requires: metrics
+        'subgraph',              # Requires: positions (pass with --positions)
     ],
     
     # Analysis parameters
@@ -122,6 +121,9 @@ def parse_arguments():
           Use paths relative to project root:
             python3 -m null_analysis --synapses data/demo/demo_synapses.pt --distance-graph data/demo/demo_graph.pt
           
+          Enable subgraph visualization by providing positions:
+            python3 -m null_analysis --synapses data/processed/synapses.pt --distance-graph data/processed/distance_graph.pt --positions data/processed/positions.pt
+          
           Note: Pre-compute distance graph first using:
             python -m data_prep.compute_distance_graph --positions data/processed/positions.pt \\
               --output data/processed/distance_graph.pt
@@ -140,6 +142,13 @@ def parse_arguments():
         type=str,
         default=None,
         help='Path to pre-computed distance_graph.pt file (default: data/processed/distance_graph.pt)'
+    )
+    
+    parser.add_argument(
+        '--positions', '-p',
+        type=str,
+        default=None,
+        help='Path to positions .pt file for subgraph visualization (optional)'
     )
     
     parser.add_argument(
@@ -223,6 +232,30 @@ def main():
     except Exception as e:
         print(f"  ✗ Error loading distance graph: {e}")
         return
+    
+    # Load positions if provided (for subgraph visualization)
+    neuron_ids = None
+    coords = None
+    if args.positions:
+        positions_path = Path(args.positions)
+        if not positions_path.is_absolute():
+            positions_path = PROJECT_ROOT / positions_path
+        try:
+            positions_data = torch.load(positions_path, weights_only=False)
+            if isinstance(positions_data, dict) and 'positions' in positions_data:
+                # Format from compute_positions.py
+                neuron_ids = positions_data.get('node_ids') or positions_data.get('neuron_ids')
+                coords = positions_data['positions'].numpy() if hasattr(positions_data['positions'], 'numpy') else np.array(positions_data['positions'])
+            elif isinstance(positions_data, dict):
+                # Legacy format: dict with node_id -> position
+                neuron_ids = list(positions_data.keys())
+                coords = np.array([positions_data[nid] for nid in neuron_ids])
+            else:
+                raise ValueError("Unexpected positions format")
+            print(f"  ✓ Loaded positions: {len(neuron_ids)} neurons")
+        except Exception as e:
+            print(f"  ⚠ Warning: Could not load positions: {e}")
+            print(f"    Subgraph visualization will be skipped")
     
     # ========================================================================
     # 2. PREPARE SPATIAL FEATURES (for spatial null model)
@@ -380,30 +413,34 @@ def main():
     # ========================================================================
     if 'subgraph' in CONFIG['visualizations']:
         print("\n[7] Creating subgraph visualization...")
-        try:
-            # Filter neurons by spatial proximity
-            sub_neurons, sub_coords = filter_neurons(
-                neuron_ids, coords, CONFIG['spatial_radius']
-            )
-            
-            if len(sub_neurons) > 0:
-                # Build subgraph edges
-                edges_as_tuples = [(u, v) for u, v in GT.edges()]
-                sub_edges = build_partial_graph(sub_neurons, edges_as_tuples)
+        if neuron_ids is None or coords is None:
+            print("  ⚠ Skipping subgraph: positions not loaded")
+            print("    Provide --positions to enable subgraph visualization")
+        else:
+            try:
+                # Filter neurons by spatial proximity
+                sub_neurons, sub_coords = filter_neurons(
+                    neuron_ids, coords, CONFIG['spatial_radius']
+                )
                 
-                # Decompose to 2D
-                decomp = decompose(sub_coords)
-                
-                # Plot
-                plt.figure(figsize=(8, 8))
-                plot_vis(sub_neurons, sub_edges, decomp)
-                subgraph_path = output_path / 'subgraph_visualization.png'
-                plt.savefig(subgraph_path, dpi=150, bbox_inches='tight')
-                plt.close()
-                print(f"  ✓ Subgraph visualization saved to {subgraph_path}")
-                print(f"    Filtered to {len(sub_neurons)} neurons within radius {CONFIG['spatial_radius']}")
-        except Exception as e:
-            print(f"  ✗ Error in subgraph visualization: {e}")
+                if len(sub_neurons) > 0:
+                    # Build subgraph edges
+                    edges_as_tuples = [(u, v) for u, v in GT.edges()]
+                    sub_edges = build_partial_graph(sub_neurons, edges_as_tuples)
+                    
+                    # Decompose to 2D
+                    decomp = decompose(sub_coords)
+                    
+                    # Plot
+                    plt.figure(figsize=(8, 8))
+                    plot_vis(sub_neurons, sub_edges, decomp)
+                    subgraph_path = output_path / 'subgraph_visualization.png'
+                    plt.savefig(subgraph_path, dpi=150, bbox_inches='tight')
+                    plt.close()
+                    print(f"  ✓ Subgraph visualization saved to {subgraph_path}")
+                    print(f"    Filtered to {len(sub_neurons)} neurons within radius {CONFIG['spatial_radius']}")
+            except Exception as e:
+                print(f"  ✗ Error in subgraph visualization: {e}")
     
     # ========================================================================
     # 8. EXPORT RESULTS

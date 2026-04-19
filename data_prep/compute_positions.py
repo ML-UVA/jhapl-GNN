@@ -6,8 +6,7 @@ This script:
 2. Loads positions from pickle files for each neuron
 3. Saves positions to positions.pt (PyTorch format)
 4. Computes pairwise distances between all neurons
-5. Creates a NetworkX graph where edge weight = Euclidean distance
-6. Saves the distance graph in both GML (text) and Pickle (binary) formats
+5. Saves pairwise distances to distances.pt (PyTorch format, same format as compute_distance_graph.py)
 
 Usage:
     # Process all neurons in graph_exports folder (with defaults)
@@ -17,10 +16,11 @@ Usage:
     python3 compute_positions.py ../../demo_graph_exports
     
     # Custom output paths
-    python3 compute_positions.py ../../demo_graph_exports --positions custom_positions.pt
+    python3 compute_positions.py ../../demo_graph_exports --positions custom_positions.pt --distances custom_distances.pt
 """
 
 import sys
+import json
 import torch
 import math
 import argparse
@@ -315,6 +315,7 @@ def compute_positions_and_distances(synapses_file: Path,
                                     graph_dir: Path,
                                     positions_file: Path,
                                     distance_graph_file: Path,
+                                    distances_file: Path = None,
                                     verbose: bool = True) -> Tuple[Dict, nx.Graph]:
     """
     Extract positions and compute distance graph.
@@ -322,16 +323,19 @@ def compute_positions_and_distances(synapses_file: Path,
     Parameters
     ----------
     synapses_file : Path
-        Path to synapses.json.
+        Path to synapses.json (unused, for compatibility).
 
     graph_dir : Path
         Directory containing pickle files.
 
     positions_file : Path
-        Output file for positions.json.
+        Output file for positions.pt.
 
     distance_graph_file : Path
-        Output file for distance graph (GraphML format).
+        Deprecated/unused parameter (for backward compatibility).
+
+    distances_file : Path, optional
+        Output file for pairwise distances matrix (default: distances.pt in same dir as graph_dir).
 
     verbose : bool
         Print progress messages.
@@ -389,12 +393,12 @@ def compute_positions_and_distances(synapses_file: Path,
                 successful += 1
             else:
                 if verbose:
-                    print(f"✗")
+                    print(f"✗ (no mesh_center)")
                 failed += 1
 
         except Exception as e:
             if verbose:
-                print(f"✗ Error: {e}")
+                print(f"✗ ({str(e)[:40]})")
             failed += 1
             continue
 
@@ -451,29 +455,37 @@ def compute_positions_and_distances(synapses_file: Path,
     print(f"  - Density: {nx.density(G):.4f}")
 
     # ========================================================================
-    # 6. SAVE DISTANCE GRAPH
+    # 6. SAVE PAIRWISE DISTANCES TO PYTORCH FORMAT
     # ========================================================================
-    print(f"\n[6] Saving distance graph...")
-
-    distance_graph_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Save in both GML (human-readable) and pickle (preserves all data) formats
-    gml_file = distance_graph_file.with_suffix('.gml')
-    pkl_file = distance_graph_file.with_suffix('.pkl')
-
-    try:
-        nx.write_gml(G, str(gml_file))
-        print(f"  ✓ GML format: {gml_file.absolute()}")
-    except Exception as e:
-        print(f"  ✗ Error saving GML: {e}")
-
-    try:
-        import pickle
-        with open(pkl_file, 'wb') as f:
-            pickle.dump(G, f)
-        print(f"  ✓ Pickle format: {pkl_file.absolute()}")
-    except Exception as e:
-        print(f"  ✗ Error saving pickle: {e}")
+    if distances_file is None:
+        distances_file = Path(positions_file).parent / 'distances.pt'
+    
+    print(f"\n[6] Saving pairwise distances...")
+    
+    distances_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Save distances matrix in same format as compute_distance_graph.py
+    # (nodes, edges, edge_weights)
+    distances_data = {
+        'nodes': neuron_list,
+        'edges': [],
+        'edge_weights': []
+    }
+    
+    # Convert distance matrix to edge list format
+    for i, nid_i in enumerate(neuron_list):
+        for j, nid_j in enumerate(neuron_list):
+            if i < j:
+                dist = float(distances[i, j])
+                distances_data['edges'].append((nid_i, nid_j))
+                distances_data['edge_weights'].append(dist)
+    
+    distances_data['edges'] = [tuple(e) for e in distances_data['edges']]
+    
+    torch.save(distances_data, distances_file)
+    print(f"  ✓ Saved distances to {distances_file.absolute()}")
+    print(f"    - Neurons: {len(distances_data['nodes'])}")
+    print(f"    - Edges: {len(distances_data['edges'])}")
 
     # ========================================================================
     # SUMMARY
@@ -483,8 +495,7 @@ def compute_positions_and_distances(synapses_file: Path,
     print("=" * 80)
     print(f"\nOutput files:")
     print(f"  - Positions: {positions_file.absolute()}")
-    print(f"  - Distance graph (GML): {distance_graph_file.parent / (distance_graph_file.stem + '.gml')}")
-    print(f"  - Distance graph (Pickle): {distance_graph_file.parent / (distance_graph_file.stem + '.pkl')}")
+    print(f"  - Pairwise distances: {distances_file.absolute()}")
     print()
 
     return positions, G
@@ -526,18 +537,26 @@ Examples:
         help='Output path for distance graph'
     )
     
+    parser.add_argument(
+        '--distances', '-D',
+        type=str,
+        default=None,
+        help='Output path for pairwise distances matrix (default: data/processed/distances.pt)'
+    )
+    
     args = parser.parse_args()
     
     # Resolve paths
     graph_dir = Path(args.graph_dir) if args.graph_dir else DEFAULT_GRAPH_DIR
     positions_file = Path(args.positions) if args.positions else DEFAULT_POSITIONS_FILE
-    distance_graph_file = Path(args.distance_graph) if args.distance_graph else DEFAULT_DISTANCE_GRAPH_FILE
+    distances_file = Path(args.distances) if args.distances else (positions_file.parent / 'distances.pt')
     
     compute_positions_and_distances(
         None,
         graph_dir,
         positions_file,
-        distance_graph_file,
+        None,  # distance_graph_file (deprecated)
+        distances_file,
         verbose=True
     )
 
