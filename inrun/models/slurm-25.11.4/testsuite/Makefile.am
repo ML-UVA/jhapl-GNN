@@ -1,1 +1,0 @@
-SUBDIRS = slurm_unit
