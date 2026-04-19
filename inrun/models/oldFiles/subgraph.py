@@ -1,0 +1,164 @@
+import pickle
+import pandas as pd
+import networkx as nx
+import numpy as np
+
+csv_path = "data/top5_k1.csv"
+shapley_path = "graph_node_shapley.value"
+
+bfs_depth = 1
+subgraph_size = 10
+top_k = 50
+
+
+df = pd.read_csv(csv_path)
+
+G = nx.Graph()
+for row in df.itertuples(index=False):
+    G.add_edge(row.pre_id, row.post_id)
+
+
+shapley = pickle.load(open(shapley_path, "rb"))
+vals = np.array(shapley["First-order In-Run Data Shapley"])
+
+nodes = list(G.nodes())
+node_to_i = {}
+i_to_node = {}
+
+i = 0
+for n in nodes:
+    node_to_i[n] = i
+    i_to_node[i] = n
+    i += 1
+
+node_val = {}
+for i in range(len(vals)):
+    node_val[i_to_node[i]] = vals[i]
+
+
+def bfs_subgraph(start, depth):
+    seen = nx.single_source_shortest_path_length(G, start, cutoff=depth)
+    return G.subgraph(seen.keys()).copy()
+
+
+def greedy_subgraph(start, k):
+    picked = set()
+    picked.add(start)
+
+    frontier = set()
+    for n in G.neighbors(start):
+        frontier.add(n)
+
+    while len(picked) < k and len(frontier) > 0:
+        best = None
+        best_val = -1
+
+        for n in frontier:
+            if node_val[n] > best_val:
+                best_val = node_val[n]
+                best = n
+
+        frontier.remove(best)
+        picked.add(best)
+
+        for nb in G.neighbors(best):
+            if nb not in picked:
+                frontier.add(nb)
+
+    return G.subgraph(picked).copy()
+
+
+def score(subg):
+    total = 0.0
+    for n in subg.nodes():
+        if n in node_val:
+            total += node_val[n]
+    return total
+
+
+sorted_nodes = []
+for n in node_val:
+    sorted_nodes.append((n, node_val[n]))
+
+for i in range(len(sorted_nodes)):
+    for j in range(i + 1, len(sorted_nodes)):
+        if sorted_nodes[j][1] > sorted_nodes[i][1]:
+            tmp = sorted_nodes[i]
+            sorted_nodes[i] = sorted_nodes[j]
+            sorted_nodes[j] = tmp
+
+seeds = []
+for i in range(top_k):
+    seeds.append(sorted_nodes[i][0])
+
+
+print("bfs time")
+
+bfs_res = []
+for s in seeds:
+    sg = bfs_subgraph(s, bfs_depth)
+    sc = score(sg)
+    bfs_res.append((s, sc, sg))
+
+for i in range(len(bfs_res)):
+    for j in range(i + 1, len(bfs_res)):
+        if bfs_res[j][1] > bfs_res[i][1]:
+            tmp = bfs_res[i]
+            bfs_res[i] = bfs_res[j]
+            bfs_res[j] = tmp
+
+for i in range(5):
+    s, sc, sg = bfs_res[i]
+    print("seed", s, "nodes", sg.number_of_nodes(), "score", sc)
+
+
+print("greedy time")
+
+greedy_res = []
+for s in seeds:
+    sg = greedy_subgraph(s, subgraph_size)
+    sc = score(sg)
+    greedy_res.append((s, sc, sg))
+
+for i in range(len(greedy_res)):
+    for j in range(i + 1, len(greedy_res)):
+        if greedy_res[j][1] > greedy_res[i][1]:
+            tmp = greedy_res[i]
+            greedy_res[i] = greedy_res[j]
+            greedy_res[j] = tmp
+
+for i in range(5):
+    s, sc, sg = greedy_res[i]
+    print("seed", s, "nodes", sg.number_of_nodes(), "score", sc)
+
+
+out = {}
+out["bfs"] = []
+out["greedy"] = []
+
+for i in range(len(bfs_res)):
+    seed = bfs_res[i][0]
+    score_val = bfs_res[i][1]
+    subgraph = bfs_res[i][2]
+
+    nodes = []
+    for n in subgraph.nodes():
+        nodes.append(n)
+
+    out["bfs"].append((seed, score_val, nodes))
+
+
+for i in range(len(greedy_res)):
+    seed = greedy_res[i][0]
+    score_val = greedy_res[i][1]
+    subgraph = greedy_res[i][2]
+
+    nodes = []
+    for n in subgraph.nodes():
+        nodes.append(n)
+
+    out["greedy"].append((seed, score_val, nodes))
+
+
+pickle.dump(out, open("subgraphs.pkl", "wb"))
+print("saved")

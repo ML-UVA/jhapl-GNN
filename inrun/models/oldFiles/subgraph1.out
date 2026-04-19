@@ -1,0 +1,130 @@
+Loading subgraph results...
+
+Extracting motif definitions from full graph...
+Loading graph from data/top5_k1.csv
+Graph loaded: 7300 nodes, 120927 edges
+Motif 0: extracted 5 edges, shapley=46.5176
+N0 -> N1
+N0 -> N2
+N3 -> N4
+N2 -> N0
+N1 -> N3
+Motif 1: extracted 5 edges, shapley=42.5698
+N0 -> N1
+N0 -> N2
+N2 -> N0
+N1 -> N3
+N4 -> N3
+Motif 2: extracted 8 edges, shapley=42.4826
+N0 -> N1
+N0 -> N2
+N0 -> N3
+N1 -> N2
+N3 -> N2
+N3 -> N0
+N2 -> N4
+N2 -> N3
+Motif 3: extracted 6 edges, shapley=41.0002
+N0 -> N1
+N0 -> N2
+N2 -> N0
+N1 -> N3
+N4 -> N3
+N3 -> N4
+Motif 4: extracted 5 edges, shapley=40.9273
+N0 -> N1
+N0 -> N2
+N2 -> N0
+N1 -> N3
+N4 -> N3
+
+=== REAL GRAPH COUNTS ===
+Loading graph from data/top5_k1.csv
+Graph loaded: 7300 nodes, 120927 edges
+Subsampled to: 3000 nodes, 18914 edges
+
+Counting motif 0 in real graph...
+[REAL motif 0] shapley=46.5176 count=16568979
+
+Counting motif 1 in real graph...
+[REAL motif 1] shapley=42.5698 count=8845949
+
+Counting motif 2 in real graph...
+[REAL motif 2] shapley=42.4826 count=569700
+
+Counting motif 3 in real graph...
+[REAL motif 3] shapley=41.0002 count=907575
+
+Counting motif 4 in real graph...
+[REAL motif 4] shapley=40.9273 count=8845949
+
+=== NULL GRAPH: null_graph_0.csv ===
+Loading graph from data/null_graphs/null_graph_0.csv
+Graph loaded: 7300 nodes, 120927 edges
+Subsampled to: 3000 nodes, 20343 edges
+Counting motif 0 in null_graph_0.csv...
+[null_graph_0.csv motif 0] count=13544850
+Counting motif 1 in null_graph_0.csv...
+[null_graph_0.csv motif 1] count=7816575
+Counting motif 2 in null_graph_0.csv...
+[null_graph_0.csv motif 2] count=459400
+Counting motif 3 in null_graph_0.csv...
+[null_graph_0.csv motif 3] count=268482
+Counting motif 4 in null_graph_0.csv...
+[null_graph_0.csv motif 4] count=7816575
+
+=== NULL GRAPH: null_graph_1.csv ===
+Loading graph from data/null_graphs/null_graph_1.csv
+Graph loaded: 7300 nodes, 120927 edges
+Subsampled to: 3000 nodes, 21726 edges
+Counting motif 0 in null_graph_1.csv...
+[null_graph_1.csv motif 0] count=19037307
+Counting motif 1 in null_graph_1.csv...
+[null_graph_1.csv motif 1] count=10420333
+Counting motif 2 in null_graph_1.csv...
+[null_graph_1.csv motif 2] count=706465
+Counting motif 3 in null_graph_1.csv...
+[null_graph_1.csv motif 3] count=398115
+Counting motif 4 in null_graph_1.csv...
+[null_graph_1.csv motif 4] count=10420333
+
+=== NULL GRAPH: null_graph_2.csv ===
+Loading graph from data/null_graphs/null_graph_2.csv
+Graph loaded: 7300 nodes, 120927 edges
+Subsampled to: 3000 nodes, 18329 edges
+Counting motif 0 in null_graph_2.csv...
+[null_graph_2.csv motif 0] count=6063548
+Counting motif 1 in null_graph_2.csv...
+[null_graph_2.csv motif 1] count=3734763
+Counting motif 2 in null_graph_2.csv...
+[null_graph_2.csv motif 2] count=110990
+Counting motif 3 in null_graph_2.csv...
+[null_graph_2.csv motif 3] count=100102
+Counting motif 4 in null_graph_2.csv...
+[null_graph_2.csv motif 4] count=3734763
+
+=== NULL GRAPH: null_graph_3.csv ===
+Loading graph from data/null_graphs/null_graph_3.csv
+Graph loaded: 7300 nodes, 120927 edges
+Subsampled to: 3000 nodes, 22026 edges
+Counting motif 0 in null_graph_3.csv...
+[null_graph_3.csv motif 0] count=19639536
+Counting motif 1 in null_graph_3.csv...
+[null_graph_3.csv motif 1] count=11235265
+Counting motif 2 in null_graph_3.csv...
+[null_graph_3.csv motif 2] count=644867
+Counting motif 3 in null_graph_3.csv...
+[null_graph_3.csv motif 3] count=431121
+Counting motif 4 in null_graph_3.csv...
+[null_graph_3.csv motif 4] count=11235265
+
+=== SUMMARY ===
+Motif    Shapley    Real       Null Mean    Null Std   Z        Expression
+----------------------------------------------------------------------
+0        46.5176    16568979   14571310.2   5455906.9  0.37     OVER
+1        42.5698    8845949    8301734.0    2923468.4  0.19     OVER
+2        42.4826    569700     480430.5     231872.6   0.38     OVER
+3        41.0002    907575     299455.0     130164.0   4.67     OVER
+4        40.9273    8845949    8301734.0    2923468.4  0.19     OVER
+
+DONE

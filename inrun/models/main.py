@@ -34,6 +34,12 @@ import subprocess
 import sys
 import os
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from filter_graph import build_graph
+from graphnodeshapley import train_and_compute_shapley
+from normalize import normalize_shapley
+from motifs import extract_and_visualize
 
 parser = argparse.ArgumentParser(description="Connectome GNN Pipeline")
 
@@ -70,92 +76,58 @@ args = parser.parse_args()
 os.makedirs(args.output_dir, exist_ok=True)
 
 #paths that get passed between steps
-csv_path      = os.path.join(args.output_dir, 'filtered_graph.csv')
-shapley_path  = os.path.join(args.output_dir, 'graph_node_shapley.value')
-norm_path     = os.path.join(args.output_dir, 'graph_node_shapley_normalized.value')
+#csv_path      = os.path.join(args.output_dir, 'filtered_graph.csv')
+#shapley_path  = os.path.join(args.output_dir, 'graph_node_shapley.value')
+#norm_path     = os.path.join(args.output_dir, 'graph_node_shapley_normalized.value')
+graph_path   = os.path.join(args.output_dir, 'filtered_graph.adjlist')
+shapley_path = os.path.join(args.output_dir, 'graph_node_shapley.value')
+norm_path    = os.path.join(args.output_dir, 'graph_node_shapley_normalized.value')
 
-def run(cmd):
-    """Run a command and exit if it fails."""
-    print(f"\n>>> {' '.join(cmd)}\n")
-    result = subprocess.run(cmd, check=False)
-    if result.returncode != 0:
-        print(f"\n[ERROR] Command failed with return code {result.returncode}")
-        sys.exit(result.returncode)
-
-#graph construction
-print("Step 1: Graph Construction")
-
-if args.use_existing:
-    cmd = [
-        sys.executable, 'filter_graph.py',
-        '--use_existing',
-        '--existing_csv', args.existing_csv,
-        '--output',       csv_path,
-    ]
-else:
-    cmd = [
-        sys.executable, 'filter_graph.py',
-        '--synapses_path', args.synapses_path,
-        '--coords_path',   args.coords_path,
-        '--output',        csv_path,
-    ]
-    if args.x_min is not None: cmd += ['--x_min', str(args.x_min)]
-    if args.x_max is not None: cmd += ['--x_max', str(args.x_max)]
-    if args.y_min is not None: cmd += ['--y_min', str(args.y_min)]
-    if args.y_max is not None: cmd += ['--y_max', str(args.y_max)]
-    if args.z_min is not None: cmd += ['--z_min', str(args.z_min)]
-    if args.z_max is not None: cmd += ['--z_max', str(args.z_max)]
-
-run(cmd)
-
+G = build_graph(
+    use_existing=args.use_existing,
+    existing_csv=args.existing_csv,
+    synapses_path=args.synapses_path,
+    coords_path=args.coords_path,
+    x_min=args.x_min, x_max=args.x_max,
+    y_min=args.y_min, y_max=args.y_max,
+    z_min=args.z_min, z_max=args.z_max,
+    output=graph_path,
+)
 
 #Step2: GAE TRAINING + SHAPLEY
 
 
 print("Step 2: GAE Training + In-Run Data Shapley")
 
+train_and_compute_shapley(
+    graph_path=graph_path,
+    feature_path=args.feature_path,
+    output_path=shapley_path,
+    epochs=args.epochs,
+    latent_dim=args.latent_dim,
+    lr=args.lr,
+    save_interval=args.save_interval,
+    variational=args.variational,
+    linear=args.linear,
+)
 
-cmd = [
-    sys.executable, 'graphnodeshapley.py',
-    '--csv_path',      csv_path,
-    '--feature_path',  args.feature_path,
-    '--epochs',        str(args.epochs),
-    '--latent_dim',    str(args.latent_dim),
-    '--lr',            str(args.lr),
-    '--save_interval', str(args.save_interval),
-    '--output_path',   shapley_path,
-]
-if args.variational: cmd.append('--variational')
-if args.linear:      cmd.append('--linear')
-
-run(cmd)
-
-#normalize
-print("\n" + "="*60)
 print("STEP 3: Normalizing Shapley Values")
-print("="*60)
-
-cmd = [
-    sys.executable, 'normalize.py',
-    '--input_path',  shapley_path,
-    '--output_path', norm_path,
-]
-
-run(cmd)
-
+normalize_shapley(
+    input_path=shapley_path,
+    output_path=norm_path,
+)
 #motifs
 
 print("STEP 4: Motif Extraction and Visualization")
 
-cmd = [
-    sys.executable, 'motifs.py',
-    '--csv_path',     csv_path,
-    '--shapley_path', norm_path,
-    '--top_k',        str(args.top_k),
-    '--output_dir',   args.output_dir,
-] + ['--motif_sizes'] + [str(s) for s in args.motif_sizes]
-
-run(cmd)
+extract_and_visualize(
+    graph_path=graph_path,
+    shapley_path=norm_path,
+    motif_sizes=args.motif_sizes,
+    top_k=args.top_k,
+    output_dir=args.output_dir,
+)
+ 
 
 
 print(f"All outputs saved to: {args.output_dir}/")

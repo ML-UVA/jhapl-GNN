@@ -8,21 +8,24 @@ This pipeline performs unsupervised motif discovery on connectome graphs using G
 
 ```
 inrun/
-├── main.py  
-├── run_entire_pipeline.slurm
-│
-├── models/
-│   ├── filter_graph.py  
-│   ├── graphnodeshapley.py
-│   ├── normalize.py       
-│   └── motifs.py          
-│
-└── ghostEngines/
-    ├── __init__.py
-    ├── graddotprod_engine.py  
-    ├── autograd_grad_sample_dotprod.py
-    ├── supported_layers_grad_samplers_dotprod.py
-    └── engine_manager.py
+└── models/
+    ├── main.py
+    ├── run_entire_pipeline.slurm
+    ├── filter_graph.py
+    ├── graphnodeshapley.py
+    ├── normalize.py
+    ├── motifs.py
+    ├── data/
+    │   ├── top5_k1.csv
+    │   ├── neuron_features.pt
+    │   ├── makefeatures.py
+    │   └── synapses.json
+    └── ghostEngines/
+        ├── __init__.py
+        ├── graddotprod_engine.py
+        ├── autograd_grad_sample_dotprod.py
+        ├── supported_layers_grad_samplers_dotprod.py
+        └── engine_manager.py
 ```
 
 ---
@@ -39,10 +42,18 @@ python main.py --use_existing
 ### Build a new graph from a spatial region of the brain:
 ```bash
 python main.py \
-    --synapses_path synapses.json \
+    --synapses_path data/synapses.json \
     --coords_path   data/neuron_coords.json \
     --x_min 800000 --x_max 1000000 \
     --y_min 700000 --y_max 900000
+```
+
+### Use a custom graph from coordinates file:
+```bash
+python main.py \
+    --coords_path   data/demo_neuron_coords.json \
+    --synapses_path data/synapses.json \
+    --feature_path  data/demo_neuron_features.pt
 ```
 
 ### Submit as a SLURM job:
@@ -52,19 +63,19 @@ sbatch run_entire_pipeline.slurm
 
 Override SLURM config without editing the file:
 ```bash
-sbatch --export=ALL,EPOCHS=500,USE_EXISTING=false,X_MIN=800000 run_pipeline.sh
+sbatch --export=ALL,EPOCHS=500,USE_EXISTING=false,X_MIN=800000 run_entire_pipeline.slurm
 ```
 
 ---
 
 ## Configuration
- 
+
 All arguments are passed to `main.py`.
- 
+
 For the graph source, pass `--use_existing` to run on the default graph, or pass spatial thresholds like `--x_min`, `--x_max`, `--y_min`, `--y_max`, `--z_min`, `--z_max` (in nanometers) to filter a new one from `synapses.json`. The coordinates file at `data/neuron_coords.json` is required for spatial filtering — see the setup section below for how to generate it.
- 
+
 For the model, the default is a standard 2-layer GCN autoencoder. Add `--variational` to use a VGAE instead, which adds a KL divergence loss term and produces smoother embeddings. Add `--linear` to use a single-layer linear encoder. These flags can be combined. Other model arguments are `--epochs` (default 200), `--latent_dim` (default 16), and `--lr` (default 0.01).
- 
+
 For motifs, `--motif_sizes` controls which subgraph sizes to extract (default: 5 10 20), `--top_k` controls how many motifs to extract per size (default: 3), and `--output_dir` sets where all outputs are saved (default: results/).
 
 ---
@@ -75,7 +86,7 @@ All outputs are saved to `--output_dir` (default: `results/`):
 
 | File | Description |
 |---|---|
-| `filtered_graph.csv` | Graph used for training |
+| `filtered_graph.adjlist` | Graph used for training (NetworkX adjlist format) |
 | `graph_node_shapley.value` | Raw per-node Shapley values (pickle) |
 | `graph_node_shapley_normalized.value` | Normalized Shapley values as % of total (pickle) |
 | `graph_node_shapley_model.pt` | Trained model checkpoint |
@@ -83,6 +94,26 @@ All outputs are saved to `--output_dir` (default: `results/`):
 | `motif_size{N}_{K}_graph.png` | Motif graph colored by Shapley value |
 | `motif_size{N}_{K}_heatmap.png` | Adjacency heatmap for each motif |
 
+---
+
+## Generating Node Features
+
+If you are using a new graph, generate a node feature matrix from `synapses.json`:
+
+```bash
+python data/makefeatures.py \
+    --synapses_path data/synapses.json \
+    --output        data/demo_neuron_features.pt
+```
+
+---
+
+
+### Ghost Dot-Product Engine
+Computing per-sample gradients naively is O(N) times slower than standard training. The ghost dot-product technique computes all pairwise gradient dot products in a single backward pass. The engine was extended from its original LLM implementation to support `GCNConv` layers, and the validation interface was adapted for link prediction rather than supervised classification.
+
+### Motif Extraction
+Motifs are extracted greedily: starting from the highest Shapley-valued unassigned node, the algorithm expands to neighbors by always adding the highest-valued available neighbor until the target size is reached. This produces connected subgraphs that are both structurally cohesive and high-importance according to the model.
 
 ---
 

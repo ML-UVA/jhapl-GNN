@@ -45,7 +45,108 @@ import argparse
 import json
 import os
 import pandas as pd
-
+import networkx as nx 
+def build_graph(
+    use_existing=False,
+    existing_csv='data/top5_k1.csv',
+    synapses_path='synapses.json',
+    coords_path='data/neuron_coords.json',
+    x_min=None, x_max=None,
+    y_min=None, y_max=None,
+    z_min=None, z_max=None,
+    output='results/filtered_graph.adjlist',
+):
+    os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
+ 
+    if use_existing:
+        if not os.path.exists(existing_csv):
+            raise FileNotFoundError(f"Existing CSV not found: {existing_csv}")
+        df = pd.read_csv(existing_csv)
+        G = nx.DiGraph()
+        for _, row in df.iterrows():
+            G.add_edge(int(row['pre_id']), int(row['post_id']))
+        print(f"[filter_graph] Loaded existing graph: {len(G.nodes()):,} nodes, {len(G.edges()):,} edges")
+        nx.write_adjlist(G, output)
+        print(f"[filter_graph] Saved -> {output}")
+        return G
+    print(f"[filter_graph] Loading coordinates from: {coords_path}")
+    with open(coords_path) as f:
+        raw_coords = json.load(f)
+    coords = {}
+    for key, xyz in raw_coords.items():
+        numeric_id = int(key.split('_')[0])
+        if numeric_id not in coords:
+            coords[numeric_id] = xyz
+    print(f"[filter_graph] Neurons with coordinates: {len(coords):,}")
+    any_threshold = any(v is not None for v in [
+        x_min, x_max, y_min, y_max, z_min, z_max
+    ])
+ 
+    if not any_threshold:
+        print("\nWARNING: No thresholds specified — all neurons will be kept.")
+ 
+    kept_ids = set()
+    
+    for neuron_id, (x, y, z) in coords.items():
+        if x_min is not None and x < x_min: continue
+        if x_max is not None and x > x_max: continue
+        if y_min is not None and y < y_min: continue
+        if y_max is not None and y > y_max: continue
+        if z_min is not None and z < z_min: continue
+        if z_max is not None and z > z_max: continue
+        kept_ids.add(neuron_id)
+ 
+    print(f"[filter_graph] Neurons before filter: {len(coords):,}")
+    print(f"[filter_graph] Neurons after filter:  {len(kept_ids):,}")
+ 
+    if len(kept_ids) == 0:
+        raise ValueError("No neurons survived the spatial filter. Check your thresholds.")
+ 
+    print(f"[filter_graph] Loading synapses from: {synapses_path}")
+    with open(synapses_path) as f:
+        raw = json.load(f)
+    G = nx.DiGraph()
+    for syn_id, val in raw.items():
+        try:
+            pre_id, post_id = int(val[0][0]), int(val[0][1])
+        except Exception:
+            continue
+        if pre_id in kept_ids and post_id in kept_ids:
+            G.add_edge(pre_id, post_id)
+ 
+    print(f"[filter_graph] Graph: {len(G.nodes()):,} nodes, {len(G.edges()):,} edges")
+ 
+    if len(G.edges()) == 0:
+        raise ValueError("No edges survived the spatial filter.")
+    nx.write_adjlist(G, output)
+    print(f"[filter_graph] Saved -> {output}")
+    return G
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Filter connectome graph by spatial bounding box")
+    parser.add_argument('--use_existing',   action='store_true')
+    parser.add_argument('--existing_csv',   type=str, default='data/top5_k1.csv')
+    parser.add_argument('--synapses_path',  type=str, default='synapses.json')
+    parser.add_argument('--coords_path',    type=str, default='data/neuron_coords.json')
+    parser.add_argument('--x_min',          type=float, default=None)
+    parser.add_argument('--x_max',          type=float, default=None)
+    parser.add_argument('--y_min',          type=float, default=None)
+    parser.add_argument('--y_max',          type=float, default=None)
+    parser.add_argument('--z_min',          type=float, default=None)
+    parser.add_argument('--z_max',          type=float, default=None)
+    parser.add_argument('--output',         type=str, default='results/filtered_graph.adjlist')
+    args = parser.parse_args()
+ 
+    build_graph(
+        use_existing=args.use_existing,
+        existing_csv=args.existing_csv,
+        synapses_path=args.synapses_path,
+        coords_path=args.coords_path,
+        x_min=args.x_min, x_max=args.x_max,
+        y_min=args.y_min, y_max=args.y_max,
+        z_min=args.z_min, z_max=args.z_max,
+        output=args.output,
+    )
+"""
 parser = argparse.ArgumentParser(
     description="Filter connectome graph by spatial bounding box"
 )
@@ -201,3 +302,4 @@ if kept_coords:
     print(f"  x: [{min(xs):,.1f},  {max(xs):,.1f}]")
     print(f"  y: [{min(ys):,.1f},  {max(ys):,.1f}]")
     print(f"  z: [{min(zs):,.1f},  {max(zs):,.1f}]")
+"""
