@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -264,3 +265,18 @@ outputs/**/*.pt
 /saved_models_demo
 /cache_PT_Pipeline_EUC
 outputs/
+=======
+# Ignore everything in data/
+data/*
+
+# Keep placeholder + specific folder
+!data/.gitkeep
+!data/graph_exports/
+
+# Ignore everything inside graph_exports
+data/graph_exports/*
+
+# Python junk
+__pycache__/
+.ipynb_checkpoints/
+>>>>>>> ben

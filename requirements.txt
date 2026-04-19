@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 torch
 networkx
 numpy
@@ -27,3 +28,13 @@ datasci-stdlib-tools
 tqdm
 git+https://github.com/reimerlab/neuron_morphology_tools.git
 umap-learn
+=======
+numpy
+scipy
+networkx
+matplotlib
+jupyter
+leidenalg
+python-igraph
+scikit-network
+>>>>>>> ben
