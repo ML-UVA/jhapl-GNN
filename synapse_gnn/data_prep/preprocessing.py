@@ -188,9 +188,9 @@ def main(config_path=None):
         config_path = args.config
         
     config = load_config(config_path)
-    
+    from config import RAW_DATA_DIR
+    GRAPH_DIR = config.get("raw_data", {}).get("neurons_directory") or str(RAW_DATA_DIR)
     # 2. Extract Paths Dynamically
-    GRAPH_DIR = config["raw_data"]["neurons_directory"]
     CACHE_DIR = config["paths"]["data_dir"]
     
     os.makedirs(CACHE_DIR, exist_ok=True)
