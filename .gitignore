@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -265,7 +264,6 @@ outputs/**/*.pt
 /saved_models_demo
 /cache_PT_Pipeline_EUC
 outputs/
-=======
 # Ignore everything in data/
 data/*
 
@@ -280,4 +278,3 @@ demo_data/*
 # Python junk
 __pycache__/
 .ipynb_checkpoints/
->>>>>>> ben

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+data/synapses.json
+oldFiles/
+slurm-25.11.4/

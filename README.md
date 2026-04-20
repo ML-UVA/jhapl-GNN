@@ -22,8 +22,12 @@ python -m synapse_gnn                        # Retrain GNN from cached dataset
 
 python -m null_analysis                      # Motif / null-model analysis (auto-regenerates missing synapses.pt / positions.pt)
 
+python -m motifs                             # GAE + In-Run Data Shapley motif discovery (auto-regenerates missing synapses_with_features.pt / positions.pt / neuron_features.pt)
+python -m motifs --use_existing              # ... from the pre-built top5_k1.csv graph
+
 python -m ADP                                # Axon-dendrite proximity pipeline
 
-python -m data_prep.build_synapses           # Build data/processed/synapses.pt from raw .pbz2
-python -m data_prep.compute_positions        # Build data/processed/positions.pt + distance graph
+python -m data_prep.build_synapses                # Build data/processed/synapses.pt from raw .pbz2
+python -m data_prep.build_synapses_with_features  # Build data/processed/synapses_with_features.pt (adds volume / upstream_dist / head_neck_shaft)
+python -m data_prep.compute_positions             # Build data/processed/positions.pt + distance graph
 ```

@@ -1,0 +1,222 @@
+[INFO] Using device: cpu
+[INFO] Nodes: 7300, Val nodes (from held-out edges): 4652
+[INFO] Train edges: 112763
+[INFO] Val edges:   6633
+[INFO] Test edges:  13266
+[INFO] Saved validation set to results/grad_dotprods/valset.pt
+Epoch: 001 | Loss: 1.2313 | AUC: 0.9073 | AP: 0.9232
+Epoch: 002 | Loss: 1.1875 | AUC: 0.9101 | AP: 0.9252
+Epoch: 003 | Loss: 1.1807 | AUC: 0.9119 | AP: 0.9264
+Epoch: 004 | Loss: 1.1867 | AUC: 0.9131 | AP: 0.9272
+Epoch: 005 | Loss: 1.1781 | AUC: 0.9140 | AP: 0.9278
+Epoch: 006 | Loss: 1.1618 | AUC: 0.9150 | AP: 0.9283
+Epoch: 007 | Loss: 1.1496 | AUC: 0.9161 | AP: 0.9290
+Epoch: 008 | Loss: 1.1411 | AUC: 0.9175 | AP: 0.9297
+Epoch: 009 | Loss: 1.1345 | AUC: 0.9188 | AP: 0.9304
+Epoch: 010 | Loss: 1.1269 | AUC: 0.9200 | AP: 0.9309
+Epoch: 011 | Loss: 1.1182 | AUC: 0.9209 | AP: 0.9313
+Epoch: 012 | Loss: 1.1095 | AUC: 0.9215 | AP: 0.9314
+Epoch: 013 | Loss: 1.1029 | AUC: 0.9219 | AP: 0.9314
+Epoch: 014 | Loss: 1.1002 | AUC: 0.9221 | AP: 0.9312
+Epoch: 015 | Loss: 1.0934 | AUC: 0.9220 | AP: 0.9308
+Epoch: 016 | Loss: 1.0881 | AUC: 0.9217 | AP: 0.9303
+Epoch: 017 | Loss: 1.0857 | AUC: 0.9213 | AP: 0.9296
+Epoch: 018 | Loss: 1.0809 | AUC: 0.9207 | AP: 0.9289
+Epoch: 019 | Loss: 1.0780 | AUC: 0.9202 | AP: 0.9284
+Epoch: 020 | Loss: 1.0777 | AUC: 0.9197 | AP: 0.9278
+Epoch: 021 | Loss: 1.0781 | AUC: 0.9192 | AP: 0.9272
+Epoch: 022 | Loss: 1.0765 | AUC: 0.9186 | AP: 0.9265
+Epoch: 023 | Loss: 1.0721 | AUC: 0.9182 | AP: 0.9260
+Epoch: 024 | Loss: 1.0711 | AUC: 0.9182 | AP: 0.9260
+Epoch: 025 | Loss: 1.0735 | AUC: 0.9184 | AP: 0.9262
+Epoch: 026 | Loss: 1.0760 | AUC: 0.9185 | AP: 0.9262
+Epoch: 027 | Loss: 1.0760 | AUC: 0.9182 | AP: 0.9258
+Epoch: 028 | Loss: 1.0716 | AUC: 0.9183 | AP: 0.9258
+Epoch: 029 | Loss: 1.0691 | AUC: 0.9188 | AP: 0.9264
+Epoch: 030 | Loss: 1.0720 | AUC: 0.9190 | AP: 0.9266
+Epoch: 031 | Loss: 1.0668 | AUC: 0.9189 | AP: 0.9265
+Epoch: 032 | Loss: 1.0676 | AUC: 0.9186 | AP: 0.9263
+Epoch: 033 | Loss: 1.0690 | AUC: 0.9186 | AP: 0.9264
+Epoch: 034 | Loss: 1.0668 | AUC: 0.9188 | AP: 0.9266
+Epoch: 035 | Loss: 1.0628 | AUC: 0.9186 | AP: 0.9266
+Epoch: 036 | Loss: 1.0645 | AUC: 0.9176 | AP: 0.9259
+Epoch: 037 | Loss: 1.0686 | AUC: 0.9168 | AP: 0.9255
+Epoch: 038 | Loss: 1.0621 | AUC: 0.9169 | AP: 0.9257
+Epoch: 039 | Loss: 1.0608 | AUC: 0.9166 | AP: 0.9256
+Epoch: 040 | Loss: 1.0590 | AUC: 0.9156 | AP: 0.9250
+Epoch: 041 | Loss: 1.0643 | AUC: 0.9137 | AP: 0.9239
+Epoch: 042 | Loss: 1.0613 | AUC: 0.9128 | AP: 0.9234
+Epoch: 043 | Loss: 1.0664 | AUC: 0.9130 | AP: 0.9236
+Epoch: 044 | Loss: 1.0572 | AUC: 0.9127 | AP: 0.9235
+Epoch: 045 | Loss: 1.0581 | AUC: 0.9107 | AP: 0.9224
+Epoch: 046 | Loss: 1.0596 | AUC: 0.9084 | AP: 0.9211
+Epoch: 047 | Loss: 1.0584 | AUC: 0.9088 | AP: 0.9214
+Epoch: 048 | Loss: 1.0605 | AUC: 0.9092 | AP: 0.9217
+Epoch: 049 | Loss: 1.0595 | AUC: 0.9074 | AP: 0.9206
+Epoch: 050 | Loss: 1.0620 | AUC: 0.9044 | AP: 0.9190
+[INFO] Saving dot product log at iteration 50 ...
+Epoch: 051 | Loss: 1.0611 | AUC: 0.9040 | AP: 0.9188
+Epoch: 052 | Loss: 1.0579 | AUC: 0.9054 | AP: 0.9197
+Epoch: 053 | Loss: 1.0603 | AUC: 0.9038 | AP: 0.9188
+Epoch: 054 | Loss: 1.0627 | AUC: 0.9005 | AP: 0.9168
+Epoch: 055 | Loss: 1.0582 | AUC: 0.9010 | AP: 0.9171
+Epoch: 056 | Loss: 1.0612 | AUC: 0.9021 | AP: 0.9179
+Epoch: 057 | Loss: 1.0627 | AUC: 0.8997 | AP: 0.9165
+Epoch: 058 | Loss: 1.0605 | AUC: 0.8975 | AP: 0.9152
+Epoch: 059 | Loss: 1.0610 | AUC: 0.8981 | AP: 0.9156
+Epoch: 060 | Loss: 1.0638 | AUC: 0.8978 | AP: 0.9154
+Epoch: 061 | Loss: 1.0637 | AUC: 0.8961 | AP: 0.9145
+Epoch: 062 | Loss: 1.0637 | AUC: 0.8954 | AP: 0.9141
+Epoch: 063 | Loss: 1.0637 | AUC: 0.8956 | AP: 0.9143
+Epoch: 064 | Loss: 1.0626 | AUC: 0.8934 | AP: 0.9131
+Epoch: 065 | Loss: 1.0629 | AUC: 0.8925 | AP: 0.9127
+Epoch: 066 | Loss: 1.0617 | AUC: 0.8935 | AP: 0.9133
+Epoch: 067 | Loss: 1.0635 | AUC: 0.8925 | AP: 0.9127
+Epoch: 068 | Loss: 1.0642 | AUC: 0.8899 | AP: 0.9113
+Epoch: 069 | Loss: 1.0628 | AUC: 0.8916 | AP: 0.9123
+Epoch: 070 | Loss: 1.0628 | AUC: 0.8923 | AP: 0.9127
+Epoch: 071 | Loss: 1.0623 | AUC: 0.8896 | AP: 0.9112
+Epoch: 072 | Loss: 1.0622 | AUC: 0.8897 | AP: 0.9112
+Epoch: 073 | Loss: 1.0643 | AUC: 0.8908 | AP: 0.9119
+Epoch: 074 | Loss: 1.0623 | AUC: 0.8901 | AP: 0.9115
+Epoch: 075 | Loss: 1.0643 | AUC: 0.8883 | AP: 0.9104
+Epoch: 076 | Loss: 1.0593 | AUC: 0.8922 | AP: 0.9127
+Epoch: 077 | Loss: 1.0609 | AUC: 0.8901 | AP: 0.9115
+Epoch: 078 | Loss: 1.0645 | AUC: 0.8866 | AP: 0.9094
+Epoch: 079 | Loss: 1.0617 | AUC: 0.8908 | AP: 0.9119
+Epoch: 080 | Loss: 1.0631 | AUC: 0.8921 | AP: 0.9127
+Epoch: 081 | Loss: 1.0617 | AUC: 0.8878 | AP: 0.9101
+Epoch: 082 | Loss: 1.0604 | AUC: 0.8885 | AP: 0.9105
+Epoch: 083 | Loss: 1.0618 | AUC: 0.8932 | AP: 0.9132
+Epoch: 084 | Loss: 1.0628 | AUC: 0.8903 | AP: 0.9116
+Epoch: 085 | Loss: 1.0580 | AUC: 0.8884 | AP: 0.9105
+Epoch: 086 | Loss: 1.0564 | AUC: 0.8926 | AP: 0.9129
+Epoch: 087 | Loss: 1.0618 | AUC: 0.8921 | AP: 0.9126
+Epoch: 088 | Loss: 1.0583 | AUC: 0.8894 | AP: 0.9109
+Epoch: 089 | Loss: 1.0589 | AUC: 0.8940 | AP: 0.9136
+Epoch: 090 | Loss: 1.0609 | AUC: 0.8930 | AP: 0.9130
+Epoch: 091 | Loss: 1.0610 | AUC: 0.8909 | AP: 0.9118
+Epoch: 092 | Loss: 1.0559 | AUC: 0.8960 | AP: 0.9147
+Epoch: 093 | Loss: 1.0590 | AUC: 0.8940 | AP: 0.9135
+Epoch: 094 | Loss: 1.0622 | AUC: 0.8914 | AP: 0.9120
+Epoch: 095 | Loss: 1.0619 | AUC: 0.8968 | AP: 0.9151
+Epoch: 096 | Loss: 1.0593 | AUC: 0.8978 | AP: 0.9156
+Epoch: 097 | Loss: 1.0580 | AUC: 0.8950 | AP: 0.9139
+Epoch: 098 | Loss: 1.0614 | AUC: 0.8966 | AP: 0.9149
+Epoch: 099 | Loss: 1.0531 | AUC: 0.9011 | AP: 0.9174
+Epoch: 100 | Loss: 1.0570 | AUC: 0.8997 | AP: 0.9166
+[INFO] Saving dot product log at iteration 100 ...
+Epoch: 101 | Loss: 1.0624 | AUC: 0.8961 | AP: 0.9144
+Epoch: 102 | Loss: 1.0592 | AUC: 0.9051 | AP: 0.9196
+Epoch: 103 | Loss: 1.0588 | AUC: 0.9047 | AP: 0.9194
+Epoch: 104 | Loss: 1.0552 | AUC: 0.8993 | AP: 0.9161
+Epoch: 105 | Loss: 1.0542 | AUC: 0.9022 | AP: 0.9177
+Epoch: 106 | Loss: 1.0539 | AUC: 0.9077 | AP: 0.9209
+Epoch: 107 | Loss: 1.0582 | AUC: 0.9076 | AP: 0.9208
+Epoch: 108 | Loss: 1.0582 | AUC: 0.9037 | AP: 0.9185
+Epoch: 109 | Loss: 1.0559 | AUC: 0.9053 | AP: 0.9193
+Epoch: 110 | Loss: 1.0606 | AUC: 0.9091 | AP: 0.9216
+Epoch: 111 | Loss: 1.0560 | AUC: 0.9095 | AP: 0.9218
+Epoch: 112 | Loss: 1.0589 | AUC: 0.9069 | AP: 0.9201
+Epoch: 113 | Loss: 1.0574 | AUC: 0.9064 | AP: 0.9198
+Epoch: 114 | Loss: 1.0554 | AUC: 0.9100 | AP: 0.9219
+Epoch: 115 | Loss: 1.0567 | AUC: 0.9109 | AP: 0.9225
+Epoch: 116 | Loss: 1.0565 | AUC: 0.9086 | AP: 0.9210
+Epoch: 117 | Loss: 1.0605 | AUC: 0.9076 | AP: 0.9203
+Epoch: 118 | Loss: 1.0589 | AUC: 0.9097 | AP: 0.9216
+Epoch: 119 | Loss: 1.0539 | AUC: 0.9109 | AP: 0.9225
+Epoch: 120 | Loss: 1.0590 | AUC: 0.9088 | AP: 0.9212
+Epoch: 121 | Loss: 1.0591 | AUC: 0.9066 | AP: 0.9197
+Epoch: 122 | Loss: 1.0523 | AUC: 0.9085 | AP: 0.9209
+Epoch: 123 | Loss: 1.0543 | AUC: 0.9102 | AP: 0.9221
+Epoch: 124 | Loss: 1.0597 | AUC: 0.9084 | AP: 0.9209
+Epoch: 125 | Loss: 1.0557 | AUC: 0.9058 | AP: 0.9192
+Epoch: 126 | Loss: 1.0543 | AUC: 0.9066 | AP: 0.9198
+Epoch: 127 | Loss: 1.0598 | AUC: 0.9077 | AP: 0.9205
+Epoch: 128 | Loss: 1.0564 | AUC: 0.9060 | AP: 0.9195
+Epoch: 129 | Loss: 1.0561 | AUC: 0.9033 | AP: 0.9177
+Epoch: 130 | Loss: 1.0543 | AUC: 0.9037 | AP: 0.9179
+Epoch: 131 | Loss: 1.0543 | AUC: 0.9049 | AP: 0.9187
+Epoch: 132 | Loss: 1.0597 | AUC: 0.9051 | AP: 0.9189
+Epoch: 133 | Loss: 1.0573 | AUC: 0.9040 | AP: 0.9182
+Epoch: 134 | Loss: 1.0527 | AUC: 0.9043 | AP: 0.9183
+Epoch: 135 | Loss: 1.0590 | AUC: 0.9044 | AP: 0.9184
+Epoch: 136 | Loss: 1.0541 | AUC: 0.9044 | AP: 0.9184
+Epoch: 137 | Loss: 1.0545 | AUC: 0.9039 | AP: 0.9180
+Epoch: 138 | Loss: 1.0567 | AUC: 0.9040 | AP: 0.9181
+Epoch: 139 | Loss: 1.0604 | AUC: 0.9041 | AP: 0.9181
+Epoch: 140 | Loss: 1.0564 | AUC: 0.9050 | AP: 0.9187
+Epoch: 141 | Loss: 1.0546 | AUC: 0.9046 | AP: 0.9184
+Epoch: 142 | Loss: 1.0586 | AUC: 0.9031 | AP: 0.9175
+Epoch: 143 | Loss: 1.0531 | AUC: 0.9034 | AP: 0.9177
+Epoch: 144 | Loss: 1.0593 | AUC: 0.9032 | AP: 0.9176
+Epoch: 145 | Loss: 1.0565 | AUC: 0.9019 | AP: 0.9167
+Epoch: 146 | Loss: 1.0577 | AUC: 0.9017 | AP: 0.9166
+Epoch: 147 | Loss: 1.0566 | AUC: 0.9032 | AP: 0.9176
+Epoch: 148 | Loss: 1.0581 | AUC: 0.9034 | AP: 0.9177
+Epoch: 149 | Loss: 1.0589 | AUC: 0.9009 | AP: 0.9161
+Epoch: 150 | Loss: 1.0568 | AUC: 0.9000 | AP: 0.9156
+[INFO] Saving dot product log at iteration 150 ...
+Epoch: 151 | Loss: 1.0560 | AUC: 0.9016 | AP: 0.9166
+Epoch: 152 | Loss: 1.0571 | AUC: 0.9014 | AP: 0.9165
+Epoch: 153 | Loss: 1.0556 | AUC: 0.9001 | AP: 0.9156
+Epoch: 154 | Loss: 1.0556 | AUC: 0.9018 | AP: 0.9166
+Epoch: 155 | Loss: 1.0548 | AUC: 0.9031 | AP: 0.9174
+Epoch: 156 | Loss: 1.0577 | AUC: 0.9001 | AP: 0.9156
+Epoch: 157 | Loss: 1.0540 | AUC: 0.8990 | AP: 0.9150
+Epoch: 158 | Loss: 1.0547 | AUC: 0.8998 | AP: 0.9155
+Epoch: 159 | Loss: 1.0506 | AUC: 0.8998 | AP: 0.9155
+Epoch: 160 | Loss: 1.0545 | AUC: 0.8994 | AP: 0.9151
+Epoch: 161 | Loss: 1.0561 | AUC: 0.9005 | AP: 0.9157
+Epoch: 162 | Loss: 1.0558 | AUC: 0.9021 | AP: 0.9168
+Epoch: 163 | Loss: 1.0572 | AUC: 0.8998 | AP: 0.9153
+Epoch: 164 | Loss: 1.0579 | AUC: 0.8979 | AP: 0.9142
+Epoch: 165 | Loss: 1.0552 | AUC: 0.8985 | AP: 0.9146
+Epoch: 166 | Loss: 1.0579 | AUC: 0.8986 | AP: 0.9146
+Epoch: 167 | Loss: 1.0518 | AUC: 0.9001 | AP: 0.9154
+Epoch: 168 | Loss: 1.0500 | AUC: 0.9024 | AP: 0.9169
+Epoch: 169 | Loss: 1.0564 | AUC: 0.8997 | AP: 0.9151
+Epoch: 170 | Loss: 1.0563 | AUC: 0.8982 | AP: 0.9142
+Epoch: 171 | Loss: 1.0589 | AUC: 0.8982 | AP: 0.9142
+Epoch: 172 | Loss: 1.0560 | AUC: 0.8978 | AP: 0.9140
+Epoch: 173 | Loss: 1.0567 | AUC: 0.8970 | AP: 0.9134
+Epoch: 174 | Loss: 1.0553 | AUC: 0.8998 | AP: 0.9151
+Epoch: 175 | Loss: 1.0539 | AUC: 0.9002 | AP: 0.9154
+Epoch: 176 | Loss: 1.0573 | AUC: 0.8973 | AP: 0.9135
+Epoch: 177 | Loss: 1.0575 | AUC: 0.8980 | AP: 0.9140
+Epoch: 178 | Loss: 1.0517 | AUC: 0.8996 | AP: 0.9150
+Epoch: 179 | Loss: 1.0573 | AUC: 0.8961 | AP: 0.9127
+Epoch: 180 | Loss: 1.0553 | AUC: 0.8970 | AP: 0.9132
+Epoch: 181 | Loss: 1.0590 | AUC: 0.8993 | AP: 0.9147
+Epoch: 182 | Loss: 1.0589 | AUC: 0.8957 | AP: 0.9123
+Epoch: 183 | Loss: 1.0593 | AUC: 0.8980 | AP: 0.9137
+Epoch: 184 | Loss: 1.0540 | AUC: 0.9000 | AP: 0.9151
+Epoch: 185 | Loss: 1.0585 | AUC: 0.8950 | AP: 0.9118
+Epoch: 186 | Loss: 1.0536 | AUC: 0.8954 | AP: 0.9121
+Epoch: 187 | Loss: 1.0567 | AUC: 0.8996 | AP: 0.9149
+Epoch: 188 | Loss: 1.0565 | AUC: 0.8959 | AP: 0.9123
+Epoch: 189 | Loss: 1.0520 | AUC: 0.8960 | AP: 0.9123
+Epoch: 190 | Loss: 1.0576 | AUC: 0.8989 | AP: 0.9142
+Epoch: 191 | Loss: 1.0543 | AUC: 0.8974 | AP: 0.9133
+Epoch: 192 | Loss: 1.0586 | AUC: 0.8957 | AP: 0.9121
+Epoch: 193 | Loss: 1.0544 | AUC: 0.8970 | AP: 0.9130
+Epoch: 194 | Loss: 1.0559 | AUC: 0.8970 | AP: 0.9130
+Epoch: 195 | Loss: 1.0540 | AUC: 0.8946 | AP: 0.9113
+Epoch: 196 | Loss: 1.0522 | AUC: 0.8976 | AP: 0.9133
+Epoch: 197 | Loss: 1.0554 | AUC: 0.8985 | AP: 0.9138
+Epoch: 198 | Loss: 1.0609 | AUC: 0.8935 | AP: 0.9104
+Epoch: 199 | Loss: 1.0562 | AUC: 0.8987 | AP: 0.9140
+Epoch: 200 | Loss: 1.0545 | AUC: 0.8986 | AP: 0.9140
+[INFO] Saving dot product log at iteration 200 ...
+
+Median time per epoch: 0.4021s
+
+[INFO] Saved Shapley values -> results/graph_node_shapley.value
+[INFO] Nodes: 7300
+[INFO] Top 5 nodes by Shapley value:
+  Node 113 (neuron 864691135207767929) | Shapley = 0.000412
+  Node 80 (neuron 864691136039723518) | Shapley = 0.000334
+  Node 1647 (neuron 864691135058552731) | Shapley = 0.000324
+  Node 1806 (neuron 864691135952020259) | Shapley = 0.000306
+  Node 9 (neuron 864691135571237925) | Shapley = 0.000300
+[INFO] Saved model checkpoint -> results/graph_node_shapley_model.pt
