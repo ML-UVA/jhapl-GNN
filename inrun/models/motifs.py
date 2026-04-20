@@ -26,7 +26,7 @@ import seaborn as sns
 
 
 def extract_and_visualize(
-    graph_path,
+    G,
     shapley_path,
     motif_sizes=[5, 10, 20],
     top_k=3,
@@ -35,9 +35,6 @@ def extract_and_visualize(
 
     os.makedirs(output_dir, exist_ok=True)
 
-
-    print("[motifs] Loading graph...")
-    G = nx.read_adjlist(graph_path, create_using=nx.MultiDiGraph(), nodetype=int)
     print(f"[motifs] Nodes: {G.number_of_nodes()}, Edges: {G.number_of_edges()}")
 
     print("[motifs] Loading normalized Shapley values...")
@@ -146,16 +143,27 @@ def extract_and_visualize(
 
 
 if __name__ == '__main__':
+    from .filter_graph import build_graph
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--graph_path',   type=str,           default='results/filtered_graph.adjlist')  
-    parser.add_argument('--shapley_path', type=str,           default='results/graph_node_shapley_normalized.value')
-    parser.add_argument('--motif_sizes',  type=int, nargs='+', default=[5, 10, 20])
-    parser.add_argument('--top_k',        type=int,           default=3)
-    parser.add_argument('--output_dir',   type=str,           default='results')
+    parser.add_argument('--shapley_path',   type=str, default='results/graph_node_shapley_normalized.value')
+    parser.add_argument('--motif_sizes',    type=int, nargs='+', default=[5, 10, 20])
+    parser.add_argument('--top_k',          type=int, default=3)
+    parser.add_argument('--output_dir',     type=str, default='results')
+    parser.add_argument('--use_existing',   action='store_true')
+    parser.add_argument('--existing_csv',   type=str, default='data/top5_k1.csv')
+    parser.add_argument('--synapses_path',  type=str, default='data/processed/synapses_with_features.pt')
+    parser.add_argument('--positions_path', type=str, default='data/processed/positions.pt')
     args = parser.parse_args()
 
+    G = build_graph(
+        use_existing=args.use_existing,
+        existing_csv=args.existing_csv,
+        synapses_path=args.synapses_path,
+        positions_path=args.positions_path,
+    )
     extract_and_visualize(
-        graph_path=args.graph_path,
+        G=G,
         shapley_path=args.shapley_path,
         motif_sizes=args.motif_sizes,
         top_k=args.top_k,

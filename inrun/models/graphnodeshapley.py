@@ -20,7 +20,6 @@ USAGE:
 
 import argparse
 import os
-import sys
 import time
 import pickle
 import networkx as nx
@@ -32,17 +31,12 @@ import torch_geometric.transforms as T
 from torch_geometric.data import Data
 from torch_geometric.nn import GAE, VGAE, GCNConv
 
-
-
-
-# Make sure ghostEngines is importable from models/
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ghostEngines.graddotprod_engine import GradDotProdEngine
+from ..ghostEngines.graddotprod_engine import GradDotProdEngine
 
 
 
 def train_and_compute_shapley(
-    graph_path,
+    G,
     feature_path,
     output_path='results/graph_node_shapley.value',
     epochs=200,
@@ -58,19 +52,26 @@ def train_and_compute_shapley(
         device = torch.device('mps')
     else:
         device = torch.device('cpu')
- 
+
     print(f"[INFO] Using device: {device}")
-    print(f"[INFO] Loading graph from: {graph_path}")
-    G_nx = nx.read_adjlist(graph_path, create_using=nx.DiGraph(), nodetype=int)
-    neuron_ids = list(G_nx.nodes())
+    neuron_ids = list(G.nodes())
     neuron_map = {nid: i for i, nid in enumerate(neuron_ids)}
- 
+
     edge_index = torch.tensor(
-        [[neuron_map[u], neuron_map[v]] for u, v in G_nx.edges()],
+        [[neuron_map[u], neuron_map[v]] for u, v in G.edges()],
         dtype=torch.long
     ).t().contiguous()
- 
-    x = torch.load(feature_path, weights_only=True)
+
+    feat_blob = torch.load(feature_path, weights_only=False)
+    all_features = feat_blob['features']
+    id_to_row = {nid: i for i, nid in enumerate(feat_blob['node_ids'])}
+    try:
+        rows = [id_to_row[nid] for nid in neuron_ids]
+    except KeyError as e:
+        raise KeyError(
+            f"Neuron {e.args[0]} in graph is missing from feature set at {feature_path}"
+        ) from e
+    x = all_features[rows]
     data = Data(x=x, edge_index=edge_index)
  
     transform = T.Compose([
@@ -232,23 +233,32 @@ def train_and_compute_shapley(
     print(f"[INFO] Saved model checkpoint -> {ckpt_path}")
  
  
-# CHANGED: argparse moved inside if __name__ == '__main__' so importing
-# this file doesn't execute anything
 if __name__ == '__main__':
+    from .filter_graph import build_graph
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--variational',   action='store_true')
-    parser.add_argument('--linear',        action='store_true')
-    parser.add_argument('--epochs',        type=int,   default=200)
-    parser.add_argument('--latent_dim',    type=int,   default=16)
-    parser.add_argument('--lr',            type=float, default=0.01)
-    parser.add_argument('--graph_path',    type=str,   default='results/filtered_graph.adjlist')  # CHANGED: was --csv_path
-    parser.add_argument('--feature_path',  type=str,   default='data/neuron_features.pt')
-    parser.add_argument('--output_path',   type=str,   default='results/graph_node_shapley.value')
-    parser.add_argument('--save_interval', type=int,   default=50)
+    parser.add_argument('--variational',    action='store_true')
+    parser.add_argument('--linear',         action='store_true')
+    parser.add_argument('--epochs',         type=int,   default=200)
+    parser.add_argument('--latent_dim',     type=int,   default=16)
+    parser.add_argument('--lr',             type=float, default=0.01)
+    parser.add_argument('--use_existing',   action='store_true')
+    parser.add_argument('--existing_csv',   type=str,   default='data/top5_k1.csv')
+    parser.add_argument('--synapses_path',  type=str,   default='data/processed/synapses_with_features.pt')
+    parser.add_argument('--positions_path', type=str,   default='data/processed/positions.pt')
+    parser.add_argument('--feature_path',   type=str,   default='data/neuron_features.pt')
+    parser.add_argument('--output_path',    type=str,   default='results/graph_node_shapley.value')
+    parser.add_argument('--save_interval',  type=int,   default=50)
     args = parser.parse_args()
- 
+
+    G = build_graph(
+        use_existing=args.use_existing,
+        existing_csv=args.existing_csv,
+        synapses_path=args.synapses_path,
+        positions_path=args.positions_path,
+    )
     train_and_compute_shapley(
-        graph_path=args.graph_path,
+        G=G,
         feature_path=args.feature_path,
         output_path=args.output_path,
         epochs=args.epochs,

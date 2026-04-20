@@ -1,73 +1,97 @@
+"""
+Build ``neuron_features.pt`` aligned to ``positions.pt``'s dedupe'd ordering.
+
+Output::
+
+    {
+        'features':  FloatTensor[N_canonical, 10],
+        'node_ids':  list[int]                 # canonical int neuron IDs
+    }
+
+Feature columns:
+    0  out_degree
+    1  in_degree
+    2  total_degree
+    3  mean volume
+    4  std  volume
+    5  mean upstream_dist
+    6  std  upstream_dist
+    7  fraction of out-synapses labeled 'head'
+    8  fraction of out-synapses labeled 'shaft'
+    9  fraction of out-synapses labeled 'no_head'
+"""
+
+import argparse
+
 import pandas as pd
 import torch
-import argparse
-import json
-#csv_path = "top5_k1.csv"
-#out_path = "neuron_features.pt"
-#csv_path = "synapses_as_csv.csv"   
-#out_path = "demo_neuron_features.pt"
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--synapses_path', type=str, default='data/synapses.json')
-parser.add_argument('--output',        type=str, default='data/demo_neuron_features.pt')
-args = parser.parse_args()
- 
-print(f"Loading synapses from: {args.synapses_path}")
-with open(args.synapses_path) as f:
-    raw = json.load(f)
- 
-# Build rows from synapses.json
-rows = []
-for syn_id, val in raw.items():
-    try:
-        pre_id, post_id = int(val[0][0]), int(val[0][1])
-        attrs = val[1]
-        rows.append({
-            'pre_id':         pre_id,
-            'post_id':        post_id,
-            'volume':         attrs.get('volume', 0) or 0,
-            'upstream_dist':  attrs.get('upstream_dist', 0) or 0,
-            'head_neck_shaft': attrs.get('head_neck_shaft', 'no_head') or 'no_head',
-        })
-    except Exception:
-        continue
- 
-df = pd.DataFrame(rows)
-print(f"Loaded {len(df):,} synapses")
 
-neurons = pd.unique(df[["pre_id", "post_id"]].values.ravel())
-neuron_index = {n: i for i, n in enumerate(neurons)}
+def build_features(synapses_path, positions_path, output_path):
+    # Canonical ordering from positions.pt: dedupe '_<N>' suffix, first wins.
+    pos_blob = torch.load(positions_path, weights_only=False)
+    canonical_ids = []
+    id_to_row = {}
+    for key in pos_blob['node_ids']:
+        nid = int(str(key).split('_')[0])
+        if nid not in id_to_row:
+            id_to_row[nid] = len(canonical_ids)
+            canonical_ids.append(nid)
+    num_nodes = len(canonical_ids)
 
-num_nodes = len(neurons)
-X = torch.zeros((num_nodes, 10), dtype=torch.float)
+    syn_blob = torch.load(synapses_path, weights_only=False)
+    edge_index = syn_blob['edge_index']
+    node_ids = syn_blob['node_ids']
+    id_table = [int(str(k).split('_')[0]) for k in node_ids]
+    pre_int = [id_table[i] for i in edge_index[0].tolist()]
+    post_int = [id_table[i] for i in edge_index[1].tolist()]
 
-out_deg = df["pre_id"].value_counts()
-in_deg = df["post_id"].value_counts()
+    df = pd.DataFrame({
+        'pre_id':          pre_int,
+        'post_id':         post_int,
+        'volume':          syn_blob['volume'].tolist(),
+        'upstream_dist':   syn_blob['upstream_dist'].tolist(),
+        'head_neck_shaft': syn_blob['head_neck_shaft'],
+    })
+    print(f"Loaded {len(df):,} synapses")
 
-for neuron, idx in neuron_index.items():
-    o = out_deg.get(neuron, 0)
-    i = in_deg.get(neuron, 0)
-    X[idx, 0] = o
-    X[idx, 1] = i
-    X[idx, 2] = o + i
+    X = torch.zeros((num_nodes, 10), dtype=torch.float)
 
-grouped = df.groupby("pre_id")
+    out_deg = df['pre_id'].value_counts()
+    in_deg = df['post_id'].value_counts()
 
-for neuron, g in grouped:
-    idx = neuron_index.get(neuron)
-    if idx is None:
-        continue
+    for neuron, row in id_to_row.items():
+        o = int(out_deg.get(neuron, 0))
+        i = int(in_deg.get(neuron, 0))
+        X[row, 0] = o
+        X[row, 1] = i
+        X[row, 2] = o + i
 
-    X[idx, 3] = g["volume"].mean()
-    X[idx, 4] = g["volume"].std() if len(g) > 1 else 0.0
-    X[idx, 5] = g["upstream_dist"].mean()
-    X[idx, 6] = g["upstream_dist"].std() if len(g) > 1 else 0.0
+    for neuron, g in df.groupby('pre_id'):
+        row = id_to_row.get(neuron)
+        if row is None:
+            continue
 
-    total = len(g)
-    X[idx, 7] = (g["head_neck_shaft"] == "head").sum() / total
-    X[idx, 8] = (g["head_neck_shaft"] == "shaft").sum() / total
-    X[idx, 9] = (g["head_neck_shaft"] == "no_head").sum() / total
+        X[row, 3] = g['volume'].mean()
+        X[row, 4] = g['volume'].std() if len(g) > 1 else 0.0
+        X[row, 5] = g['upstream_dist'].mean()
+        X[row, 6] = g['upstream_dist'].std() if len(g) > 1 else 0.0
 
-torch.save(X, args.output)
+        total = len(g)
+        X[row, 7] = (g['head_neck_shaft'] == 'head').sum() / total
+        X[row, 8] = (g['head_neck_shaft'] == 'shaft').sum() / total
+        X[row, 9] = (g['head_neck_shaft'] == 'no_head').sum() / total
 
-print("saved features", X.shape)
+    torch.save({'features': X, 'node_ids': canonical_ids}, output_path)
+    print(f"Saved features {tuple(X.shape)} -> {output_path}")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--synapses_path', type=str,
+                        default='data/processed/synapses_with_features.pt')
+    parser.add_argument('--positions_path', type=str,
+                        default='data/processed/positions.pt')
+    parser.add_argument('--output', type=str, default='data/neuron_features.pt')
+    args = parser.parse_args()
+    build_features(args.synapses_path, args.positions_path, args.output)

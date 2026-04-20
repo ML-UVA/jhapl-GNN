@@ -18,14 +18,14 @@
 
 
 #Set USE_EXISTING=true to use the existing top5_k1.csv
-#Set USE_EXISTING=false to build a new graph from synapses.json
+#Set USE_EXISTING=false to build a new graph from synapses_with_features.pt
 #using the spatial thresholds below
 USE_EXISTING="${USE_EXISTING:-true}"
 EXISTING_CSV="${EXISTING_CSV:-data/top5_k1.csv}"
 
 #Input files (only used if USE_EXISTING=false)
-SYNAPSES_PATH="${SYNAPSES_PATH:-synapses.json}"
-COORDS_PATH="${COORDS_PATH:-data/neuron_coords.json}"
+SYNAPSES_PATH="${SYNAPSES_PATH:-data/processed/synapses_with_features.pt}"
+POSITIONS_PATH="${POSITIONS_PATH:-data/processed/positions.pt}"
 
 #Spatial thresholds (only used if USE_EXISTING=false) ---
 #Leave empty to skip that axis
@@ -55,6 +55,9 @@ source ~/.bashrc
 module load miniforge/25.3.1-py3.12
 conda activate condaEnv
 
+# Run from repo root so `python -m inrun` and default data/ paths resolve.
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+
 mkdir -p logs
 mkdir -p "${OUTPUT_DIR}"
 
@@ -74,7 +77,7 @@ echo "  MOTIF_SIZES   = ${MOTIF_SIZES}"
 echo "  TOP_K         = ${TOP_K}"
 echo "  OUTPUT_DIR    = ${OUTPUT_DIR}"
 
-CMD="python models/main.py \
+CMD="python -m inrun \
     --feature_path  ${FEATURE_PATH} \
     --epochs        ${EPOCHS} \
     --latent_dim    ${LATENT_DIM} \
@@ -90,8 +93,8 @@ if [ "${USE_EXISTING}" = "true" ]; then
     CMD="${CMD} --use_existing --existing_csv ${EXISTING_CSV}"
 else
     CMD="${CMD} \
-        --synapses_path ${SYNAPSES_PATH} \
-        --coords_path   ${COORDS_PATH}"
+        --synapses_path  ${SYNAPSES_PATH} \
+        --positions_path ${POSITIONS_PATH}"
 
     [ -n "${X_MIN}" ] && CMD="${CMD} --x_min ${X_MIN}"
     [ -n "${X_MAX}" ] && CMD="${CMD} --x_max ${X_MAX}"
