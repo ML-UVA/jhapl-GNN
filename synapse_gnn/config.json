@@ -1,3 +1,45 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ba29a24d8893a312faafeca6a88dc1cea5ee2a72737a085b6ab14c8cf3498a8e
-size 1256
+{
+    "raw_data": {
+        "neurons_directory": "../../demo_graph_exports"
+    },
+    "paths": {
+        "data_dir": "./outputs/gnn/cache_PT_Pipeline_EUC",
+        "model_out": "./outputs/gnn/saved_models_PT_Pipeline_EUC",
+        "input_nx_graph": "euc_graph",
+        "visualization_output": "outputs/gnn/evals_PT_Pipeline_EUC"
+    },
+    "graph_generation": {
+        "spatial_threshold_nm": 30000,
+        "adp_threshold": 0.0,
+        "load_edge_weights": false
+    },
+    "graph_conversion": {
+        "make_undirected": true
+    },
+    "spatial_split": {
+        "train_cluster_size": 100,
+        "test_cluster_size": 25
+    },
+    "architecture": {
+        "in_channels": 8,
+        "hidden_dim": 128,
+        "selected_features": [0,1,2,3,4,5,6,7],
+        "spatial_features": [8, 9, 10]
+    },
+    "training": {
+        "epochs": 50,
+        "learning_rate": 0.001,
+        "steps_per_epoch": 100,
+        "train_node_sample_size": 8000,
+        "validation_node_sample_size": 8000,
+        "validation_averaging_runs": 5,
+        "log_file_name": "gnn_training_log.txt"
+    },
+    "evaluation": {
+        "test_node_sample_size": 15000,
+        "test_aggregation_runs": 5
+    },
+    "logging": {
+        "log_file_name": "gnn_log.txt"
+    }
+}
