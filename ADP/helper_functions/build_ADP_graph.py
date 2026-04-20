@@ -5,7 +5,13 @@ import os
 import torch
 
 
-def build_graph(base_path, threshold):
+def build_graph(base_path, threshold, output_dir=None):
+    """Build the thresholded ADP graph.
+
+    Reads ``neuron_ids.pkl`` and ``adp_data.pkl`` from ``base_path``. The
+    resulting graph is written to ``output_dir`` (defaults to ``base_path``
+    for backwards compatibility).
+    """
     neuron_ids_path = os.path.join(base_path, "neuron_ids.pkl")
     with open(neuron_ids_path,"rb") as f:
         neuron_ids = pickle.load(f)
@@ -14,8 +20,11 @@ def build_graph(base_path, threshold):
     edge_values = []
     index_values = {}
 
+    if output_dir is None:
+        output_dir = base_path
+    os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(
-        base_path,
+        output_dir,
         f"adp_graph_threshold_{threshold}.pt"
     )
 

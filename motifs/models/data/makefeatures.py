@@ -87,11 +87,13 @@ def build_features(synapses_path, positions_path, output_path):
 
 
 if __name__ == '__main__':
+    from config import INTERMEDIATE_DIR
     parser = argparse.ArgumentParser()
     parser.add_argument('--synapses_path', type=str,
-                        default='data/processed/synapses_with_features.pt')
+                        default=str(INTERMEDIATE_DIR / 'synapses_with_features.pt'))
     parser.add_argument('--positions_path', type=str,
-                        default='data/processed/positions.pt')
-    parser.add_argument('--output', type=str, default='data/neuron_features.pt')
+                        default=str(INTERMEDIATE_DIR / 'positions.pt'))
+    parser.add_argument('--output', type=str,
+                        default=str(INTERMEDIATE_DIR / 'neuron_features.pt'))
     args = parser.parse_args()
     build_features(args.synapses_path, args.positions_path, args.output)

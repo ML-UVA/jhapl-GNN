@@ -12,6 +12,14 @@ The datasets used to develop and validate these analyses were sourced from the M
 
 All data generated from the pipeline and analyzes are stored in the data folder.
 
+## Paths
+
+Global paths live in [`config.py`](config.py):
+
+- `RAW_DATA_DIR` — `../../demo_graph_exports` (raw `.pbz2` morphologies)
+- `INTERMEDIATE_DIR` — `data/processed/` (shared `.pt` / `.pkl` artifacts)
+- `OUTPUT_DIR` — `outputs/` (per-subpackage results live under `outputs/<subpkg>/`)
+
 ## Entry points
 
 Run from the repo root.

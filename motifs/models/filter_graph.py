@@ -56,12 +56,17 @@ def _canonical_edges(synapses_path):
 def build_graph(
     use_existing=False,
     existing_csv='data/top5_k1.csv',
-    synapses_path='data/processed/synapses_with_features.pt',
-    positions_path='data/processed/positions.pt',
+    synapses_path=None,
+    positions_path=None,
     x_min=None, x_max=None,
     y_min=None, y_max=None,
     z_min=None, z_max=None,
 ):
+    from config import INTERMEDIATE_DIR
+    if synapses_path is None:
+        synapses_path = str(INTERMEDIATE_DIR / 'synapses_with_features.pt')
+    if positions_path is None:
+        positions_path = str(INTERMEDIATE_DIR / 'positions.pt')
     if use_existing:
         if not os.path.exists(existing_csv):
             raise FileNotFoundError(f"Existing CSV not found: {existing_csv}")
@@ -110,11 +115,12 @@ def build_graph(
 
 
 if __name__ == '__main__':
+    from config import INTERMEDIATE_DIR
     parser = argparse.ArgumentParser(description="Filter connectome graph by spatial bounding box")
     parser.add_argument('--use_existing',   action='store_true')
     parser.add_argument('--existing_csv',   type=str, default='data/top5_k1.csv')
-    parser.add_argument('--synapses_path',  type=str, default='data/processed/synapses_with_features.pt')
-    parser.add_argument('--positions_path', type=str, default='data/processed/positions.pt')
+    parser.add_argument('--synapses_path',  type=str, default=str(INTERMEDIATE_DIR / 'synapses_with_features.pt'))
+    parser.add_argument('--positions_path', type=str, default=str(INTERMEDIATE_DIR / 'positions.pt'))
     parser.add_argument('--x_min', type=float, default=None)
     parser.add_argument('--x_max', type=float, default=None)
     parser.add_argument('--y_min', type=float, default=None)

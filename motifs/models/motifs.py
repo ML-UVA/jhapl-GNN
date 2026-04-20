@@ -143,17 +143,19 @@ def extract_and_visualize(
 
 
 if __name__ == '__main__':
+    from config import INTERMEDIATE_DIR, OUTPUT_DIR
     from .filter_graph import build_graph
 
+    motifs_out = OUTPUT_DIR / 'motifs'
     parser = argparse.ArgumentParser()
-    parser.add_argument('--shapley_path',   type=str, default='results/graph_node_shapley_normalized.value')
+    parser.add_argument('--shapley_path',   type=str, default=str(motifs_out / 'graph_node_shapley_normalized.value'))
     parser.add_argument('--motif_sizes',    type=int, nargs='+', default=[5, 10, 20])
     parser.add_argument('--top_k',          type=int, default=3)
-    parser.add_argument('--output_dir',     type=str, default='results')
+    parser.add_argument('--output_dir',     type=str, default=str(motifs_out))
     parser.add_argument('--use_existing',   action='store_true')
     parser.add_argument('--existing_csv',   type=str, default='data/top5_k1.csv')
-    parser.add_argument('--synapses_path',  type=str, default='data/processed/synapses_with_features.pt')
-    parser.add_argument('--positions_path', type=str, default='data/processed/positions.pt')
+    parser.add_argument('--synapses_path',  type=str, default=str(INTERMEDIATE_DIR / 'synapses_with_features.pt'))
+    parser.add_argument('--positions_path', type=str, default=str(INTERMEDIATE_DIR / 'positions.pt'))
     args = parser.parse_args()
 
     G = build_graph(

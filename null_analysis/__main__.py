@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from pathlib import Path
 
+from config import INTERMEDIATE_DIR, OUTPUT_DIR, RAW_DATA_DIR
+
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -24,10 +26,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # ============================================================================
 
 CONFIG = {
-    # Data paths (relative to project root)
-    'data_dir': PROJECT_ROOT / 'data' / 'processed',
-    'output_dir': PROJECT_ROOT / 'outputs' / 'null_analysis',
-    'raw_graph_dir': PROJECT_ROOT / '..' / '..' / 'demo_graph_exports',  # Source .pbz2 neuron morphologies
+    # Data paths routed through the repo-root config module
+    'data_dir': INTERMEDIATE_DIR,
+    'output_dir': OUTPUT_DIR / 'null_analysis',
+    'raw_graph_dir': RAW_DATA_DIR,
     
     # Which null models to run
     'null_models': [
@@ -72,10 +74,7 @@ from data_prep.graph_io import (
     build_synapse_digraph, export_graph_to_pt, export_positions_to_pt
 )
 from data_prep.spatial_analysis import filter_neurons, build_partial_graph, decompose, plot_vis
-from data_prep.compute_positions import (
-    compute_positions_and_distances,
-    DEFAULT_DISTANCE_GRAPH_FILE as POSITIONS_DISTANCE_GRAPH_FILE,
-)
+from data_prep.compute_positions import compute_positions_and_distances
 from data_prep.build_synapses import extract_synapses
 from null_analysis.binning.compute_bins import compute_bins, BinModel
 from null_analysis.null_models.wrappers import get_null_model, NULL_MODELS
@@ -230,7 +229,6 @@ def main():
             synapses_file=None,
             graph_dir=raw_graph_dir,
             positions_file=positions_path,
-            distance_graph_file=POSITIONS_DISTANCE_GRAPH_FILE,
             verbose=False,
         )
         if not positions_path.exists():

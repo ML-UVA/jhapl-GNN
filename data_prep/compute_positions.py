@@ -33,10 +33,12 @@ from typing import Dict, List, Tuple, Optional
 # CONFIGURATION
 # ============================================================================
 
-DEFAULT_SYNAPSES_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'synapses.pt'
-DEFAULT_GRAPH_DIR = Path(__file__).parent.parent / 'data' / 'raw' / 'graph_exports'
-DEFAULT_POSITIONS_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'positions.pt'
-DEFAULT_DISTANCE_GRAPH_FILE = Path(__file__).parent.parent / 'data' / 'processed' / 'distance_graph.gml'
+from config import INTERMEDIATE_DIR, RAW_DATA_DIR
+
+DEFAULT_SYNAPSES_FILE = INTERMEDIATE_DIR / 'synapses.pt'
+DEFAULT_GRAPH_DIR = RAW_DATA_DIR
+DEFAULT_POSITIONS_FILE = INTERMEDIATE_DIR / 'positions.pt'
+DEFAULT_DISTANCE_GRAPH_FILE = INTERMEDIATE_DIR / 'distance_graph.gml'
 
 # Distance threshold for creating edges (in spatial units)
 DISTANCE_THRESHOLD = 1e6
@@ -311,13 +313,13 @@ def build_distance_graph(positions: Dict[int, Tuple[float, float, float]],
 # MAIN PIPELINE
 # ============================================================================
 
-def compute_positions_and_distances(synapses_file: Path, 
+def compute_positions_and_distances(synapses_file: Path,
                                     graph_dir: Path,
                                     positions_file: Path,
-                                    distance_graph_file: Path,
-                                    verbose: bool = True) -> Tuple[Dict, nx.Graph]:
+                                    distance_graph_file: Optional[Path] = None,
+                                    verbose: bool = True) -> Tuple[Dict, Optional[nx.Graph]]:
     """
-    Extract positions and compute distance graph.
+    Extract positions and (optionally) compute a pairwise distance graph.
 
     Parameters
     ----------
@@ -330,8 +332,10 @@ def compute_positions_and_distances(synapses_file: Path,
     positions_file : Path
         Output file for positions.json.
 
-    distance_graph_file : Path
-        Output file for distance graph (GraphML format).
+    distance_graph_file : Path or None
+        If given, also compute the pairwise distance graph and write it to
+        ``<stem>.gml`` and ``<stem>.pkl``. Default ``None`` skips this step,
+        since nothing in the repo currently consumes the distance graph.
 
     verbose : bool
         Print progress messages.
@@ -427,53 +431,53 @@ def compute_positions_and_distances(synapses_file: Path,
     print(f"  ✓ Saved {len(positions)} positions to {positions_file.absolute()}")
     print(f"    - Shape: {positions_tensor.shape}")
 
-    # ========================================================================
-    # 4. COMPUTE PAIRWISE DISTANCES
-    # ========================================================================
-    print(f"\n[4] Computing pairwise distances...")
+    G = None
+    if distance_graph_file is not None:
+        # ====================================================================
+        # 4. COMPUTE PAIRWISE DISTANCES
+        # ====================================================================
+        print(f"\n[4] Computing pairwise distances...")
 
-    distances, neuron_list = compute_pairwise_distances(positions)
+        distances, neuron_list = compute_pairwise_distances(positions)
 
-    print(f"  ✓ Distance matrix: {distances.shape}")
-    print(f"    - Min distance: {distances[distances > 0].min():.2f}")
-    print(f"    - Max distance: {distances.max():.2f}")
+        print(f"  ✓ Distance matrix: {distances.shape}")
+        print(f"    - Min distance: {distances[distances > 0].min():.2f}")
+        print(f"    - Max distance: {distances.max():.2f}")
 
-    # ========================================================================
-    # 5. BUILD DISTANCE GRAPH
-    # ========================================================================
-    print(f"\n[5] Building distance graph...")
+        # ====================================================================
+        # 5. BUILD DISTANCE GRAPH
+        # ====================================================================
+        print(f"\n[5] Building distance graph...")
 
-    G = build_distance_graph(positions, DISTANCE_THRESHOLD)
+        G = build_distance_graph(positions, DISTANCE_THRESHOLD)
 
-    print(f"\nDistance graph:")
-    print(f"  - Nodes: {G.number_of_nodes()}")
-    print(f"  - Edges: {G.number_of_edges()}")
-    print(f"  - Density: {nx.density(G):.4f}")
+        print(f"\nDistance graph:")
+        print(f"  - Nodes: {G.number_of_nodes()}")
+        print(f"  - Edges: {G.number_of_edges()}")
+        print(f"  - Density: {nx.density(G):.4f}")
 
-    # ========================================================================
-    # 6. SAVE DISTANCE GRAPH
-    # ========================================================================
-    print(f"\n[6] Saving distance graph...")
+        # ====================================================================
+        # 6. SAVE DISTANCE GRAPH
+        # ====================================================================
+        print(f"\n[6] Saving distance graph...")
 
-    distance_graph_file.parent.mkdir(parents=True, exist_ok=True)
+        distance_graph_file.parent.mkdir(parents=True, exist_ok=True)
+        gml_file = distance_graph_file.with_suffix('.gml')
+        pkl_file = distance_graph_file.with_suffix('.pkl')
 
-    # Save in both GML (human-readable) and pickle (preserves all data) formats
-    gml_file = distance_graph_file.with_suffix('.gml')
-    pkl_file = distance_graph_file.with_suffix('.pkl')
+        try:
+            nx.write_gml(G, str(gml_file))
+            print(f"  ✓ GML format: {gml_file.absolute()}")
+        except Exception as e:
+            print(f"  ✗ Error saving GML: {e}")
 
-    try:
-        nx.write_gml(G, str(gml_file))
-        print(f"  ✓ GML format: {gml_file.absolute()}")
-    except Exception as e:
-        print(f"  ✗ Error saving GML: {e}")
-
-    try:
-        import pickle
-        with open(pkl_file, 'wb') as f:
-            pickle.dump(G, f)
-        print(f"  ✓ Pickle format: {pkl_file.absolute()}")
-    except Exception as e:
-        print(f"  ✗ Error saving pickle: {e}")
+        try:
+            import pickle
+            with open(pkl_file, 'wb') as f:
+                pickle.dump(G, f)
+            print(f"  ✓ Pickle format: {pkl_file.absolute()}")
+        except Exception as e:
+            print(f"  ✗ Error saving pickle: {e}")
 
     # ========================================================================
     # SUMMARY
@@ -483,8 +487,9 @@ def compute_positions_and_distances(synapses_file: Path,
     print("=" * 80)
     print(f"\nOutput files:")
     print(f"  - Positions: {positions_file.absolute()}")
-    print(f"  - Distance graph (GML): {distance_graph_file.parent / (distance_graph_file.stem + '.gml')}")
-    print(f"  - Distance graph (Pickle): {distance_graph_file.parent / (distance_graph_file.stem + '.pkl')}")
+    if distance_graph_file is not None:
+        print(f"  - Distance graph (GML): {distance_graph_file.with_suffix('.gml')}")
+        print(f"  - Distance graph (Pickle): {distance_graph_file.with_suffix('.pkl')}")
     print()
 
     return positions, G
@@ -523,22 +528,23 @@ Examples:
         '--distance-graph', '-d',
         type=str,
         default=None,
-        help='Output path for distance graph'
+        help='Optional output path for a pairwise distance graph (.gml + .pkl). '
+             'Skipped by default — no callers consume it.'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Resolve paths
     graph_dir = Path(args.graph_dir) if args.graph_dir else DEFAULT_GRAPH_DIR
     positions_file = Path(args.positions) if args.positions else DEFAULT_POSITIONS_FILE
-    distance_graph_file = Path(args.distance_graph) if args.distance_graph else DEFAULT_DISTANCE_GRAPH_FILE
-    
+    distance_graph_file = Path(args.distance_graph) if args.distance_graph else None
+
     compute_positions_and_distances(
         None,
         graph_dir,
         positions_file,
         distance_graph_file,
-        verbose=True
+        verbose=True,
     )
 
 

@@ -16,6 +16,7 @@ Orchestrates the full connectome GNN pipeline:
 import argparse
 import os
 
+from config import INTERMEDIATE_DIR, OUTPUT_DIR
 from .models.filter_graph import build_graph
 from .models.graphnodeshapley import train_and_compute_shapley
 from .models.normalize import normalize_shapley
@@ -26,8 +27,8 @@ parser = argparse.ArgumentParser(description="Connectome GNN Pipeline")
 parser.add_argument('--use_existing',   action='store_true',
                     help='Use existing CSV instead of building a new graph')
 parser.add_argument('--existing_csv',   type=str, default='data/top5_k1.csv')
-parser.add_argument('--synapses_path',  type=str, default='data/processed/synapses_with_features.pt')
-parser.add_argument('--positions_path', type=str, default='data/processed/positions.pt')
+parser.add_argument('--synapses_path',  type=str, default=str(INTERMEDIATE_DIR / 'synapses_with_features.pt'))
+parser.add_argument('--positions_path', type=str, default=str(INTERMEDIATE_DIR / 'positions.pt'))
 parser.add_argument('--config',         type=str, default='synapse_gnn/config.json',
                     help='Config with raw_data.neurons_directory; used to regenerate .pt files if missing')
 parser.add_argument('--x_min',          type=float, default=None)
@@ -38,7 +39,7 @@ parser.add_argument('--z_min',          type=float, default=None)
 parser.add_argument('--z_max',          type=float, default=None)
 
 # gae parameters
-parser.add_argument('--feature_path',   type=str, default='data/neuron_features.pt')
+parser.add_argument('--feature_path',   type=str, default=str(INTERMEDIATE_DIR / 'neuron_features.pt'))
 parser.add_argument('--variational',    action='store_true')
 parser.add_argument('--linear',         action='store_true')
 parser.add_argument('--epochs',         type=int,   default=200)
@@ -51,7 +52,7 @@ parser.add_argument('--motif_sizes',    type=int, nargs='+', default=[5, 10, 20]
 parser.add_argument('--top_k',          type=int, default=3)
 
 # output
-parser.add_argument('--output_dir',     type=str, default='results')
+parser.add_argument('--output_dir',     type=str, default=str(OUTPUT_DIR / 'motifs'))
 
 args = parser.parse_args()
 
@@ -78,12 +79,10 @@ def _ensure_positions_pt(path, config_path):
     from data_prep.compute_positions import compute_positions_and_distances
     with open(config_path) as f:
         cfg = json.load(f)
-    path_p = Path(path)
     compute_positions_and_distances(
         synapses_file=None,
         graph_dir=Path(cfg['raw_data']['neurons_directory']),
-        positions_file=path_p,
-        distance_graph_file=path_p.with_name('distance_graph.gml'),
+        positions_file=Path(path),
         verbose=False,
     )
 

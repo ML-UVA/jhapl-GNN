@@ -2,6 +2,7 @@ import time
 import argparse
 import os
 
+from config import INTERMEDIATE_DIR, OUTPUT_DIR, RAW_DATA_DIR
 from ADP.helper_functions import (
     generate_skeleton_data,
     build_kd_trees,
@@ -19,15 +20,15 @@ def main():
     parser.add_argument(
         "--raw_data_path",
         type=str,
-        default="../../demo_graph_exports",
-        help="Path to neuron graph exports directory (default: ../../demo_graph_exports)"
+        default=str(RAW_DATA_DIR),
+        help=f"Path to neuron graph exports directory (default: {RAW_DATA_DIR})"
     )
 
     parser.add_argument(
         "--output_path",
         type=str,
-        default="data/processed",
-        help="Path to output / checkpoint directory (default: data/processed)"
+        default=str(OUTPUT_DIR / "ADP"),
+        help=f"Path to output / checkpoint directory (default: {OUTPUT_DIR / 'ADP'})"
     )
 
     parser.add_argument(
@@ -84,9 +85,9 @@ def main():
     convert_adp(rel_data_checkpoint_path)
     print(f"ADP id conversion completed in {time.time() - time_start:.2f} seconds")
 
-    # Graph Generation
+    # Graph Generation — final ADP graph lives in the shared intermediate dir.
     time_start = time.time()
-    build_graph(rel_data_checkpoint_path, threshold)
+    build_graph(rel_data_checkpoint_path, threshold, output_dir=str(INTERMEDIATE_DIR))
     print(f"Graph generation completed in {time.time() - time_start:.2f} seconds")
 
     # Clean up the pipeline's own intermediates (leave unrelated files alone)

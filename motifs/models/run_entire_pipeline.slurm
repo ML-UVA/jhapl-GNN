@@ -37,7 +37,7 @@ Z_MIN="${Z_MIN:-}"
 Z_MAX="${Z_MAX:-}"
 
 #node features
-FEATURE_PATH="${FEATURE_PATH:-data/neuron_features.pt}"
+FEATURE_PATH="${FEATURE_PATH:-data/processed/neuron_features.pt}"
 
 MODEL_FLAGS="${MODEL_FLAGS:-}"
 EPOCHS="${EPOCHS:-200}"
@@ -48,7 +48,7 @@ SAVE_INTERVAL="${SAVE_INTERVAL:-50}"
 MOTIF_SIZES="${MOTIF_SIZES:-5 10 20}"
 TOP_K="${TOP_K:-3}"
 
-OUTPUT_DIR="${OUTPUT_DIR:-results}"
+OUTPUT_DIR="${OUTPUT_DIR:-outputs/motifs}"
 
 
 source ~/.bashrc

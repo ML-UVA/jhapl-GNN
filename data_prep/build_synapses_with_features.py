@@ -25,12 +25,13 @@ from datasci_tools import system_utils as su
 
 
 def parse_args():
+    from config import INTERMEDIATE_DIR
     parser = argparse.ArgumentParser(
         description="Extract ground-truth synapses with per-synapse features"
     )
     parser.add_argument('--config', type=str, default="synapse_gnn/config.json")
     parser.add_argument('--output', type=str,
-                        default="data/processed/synapses_with_features.pt")
+                        default=str(INTERMEDIATE_DIR / "synapses_with_features.pt"))
     return parser.parse_args()
 
 

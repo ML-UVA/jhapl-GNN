@@ -3,10 +3,10 @@
         "neurons_directory": "../../demo_graph_exports"
     },
     "paths": {
-        "data_dir": "./outputs/gnn/cache_PT_Pipeline_EUC",
-        "model_out": "./outputs/gnn/saved_models_PT_Pipeline_EUC",
+        "data_dir": "outputs/synapse_gnn/cache_PT_Pipeline_EUC",
+        "model_out": "outputs/synapse_gnn/saved_models_PT_Pipeline_EUC",
         "input_nx_graph": "euc_graph",
-        "visualization_output": "outputs/gnn/evals_PT_Pipeline_EUC"
+        "visualization_output": "outputs/synapse_gnn/evals_PT_Pipeline_EUC"
     },
     "graph_generation": {
         "spatial_threshold_nm": 30000,

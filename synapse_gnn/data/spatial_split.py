@@ -4,8 +4,9 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from torch_geometric.data import Data
 
+from config import INTERMEDIATE_DIR
 # Import the new loader we built to fetch the master Data object
-from synapse_gnn.data.loader import load_pyg_data 
+from synapse_gnn.data.loader import load_pyg_data
 
 def generate_spatial_masks_and_stitch(config):
     CACHE_DIR = config["paths"]["data_dir"]
@@ -21,7 +22,7 @@ def generate_spatial_masks_and_stitch(config):
     
     # 1. Load the unified Master Data Object
     try:
-        data = load_pyg_data(CACHE_DIR, graph_filename=graph_filename, labels_path="data/processed/synapses.pt")
+        data = load_pyg_data(CACHE_DIR, graph_filename=graph_filename, labels_path=str(INTERMEDIATE_DIR / "synapses.pt"))
     except Exception as e:
         raise RuntimeError(f"Failed to load master Data object: {e}")
         

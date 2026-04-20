@@ -234,6 +234,7 @@ def train_and_compute_shapley(
  
  
 if __name__ == '__main__':
+    from config import INTERMEDIATE_DIR, OUTPUT_DIR
     from .filter_graph import build_graph
 
     parser = argparse.ArgumentParser()
@@ -244,10 +245,10 @@ if __name__ == '__main__':
     parser.add_argument('--lr',             type=float, default=0.01)
     parser.add_argument('--use_existing',   action='store_true')
     parser.add_argument('--existing_csv',   type=str,   default='data/top5_k1.csv')
-    parser.add_argument('--synapses_path',  type=str,   default='data/processed/synapses_with_features.pt')
-    parser.add_argument('--positions_path', type=str,   default='data/processed/positions.pt')
-    parser.add_argument('--feature_path',   type=str,   default='data/neuron_features.pt')
-    parser.add_argument('--output_path',    type=str,   default='results/graph_node_shapley.value')
+    parser.add_argument('--synapses_path',  type=str,   default=str(INTERMEDIATE_DIR / 'synapses_with_features.pt'))
+    parser.add_argument('--positions_path', type=str,   default=str(INTERMEDIATE_DIR / 'positions.pt'))
+    parser.add_argument('--feature_path',   type=str,   default=str(INTERMEDIATE_DIR / 'neuron_features.pt'))
+    parser.add_argument('--output_path',    type=str,   default=str(OUTPUT_DIR / 'motifs' / 'graph_node_shapley.value'))
     parser.add_argument('--save_interval',  type=int,   default=50)
     args = parser.parse_args()
 

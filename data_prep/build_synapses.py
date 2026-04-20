@@ -84,12 +84,12 @@ def main(config_path=None):
         args = parse_args()
         config_path = args.config
         
+    from config import INTERMEDIATE_DIR, RAW_DATA_DIR
     config = load_config(config_path)
 
-    OUTPUT_DIR = "data/processed"
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    output_pt = os.path.join(OUTPUT_DIR, "synapses.pt")
-    GRAPH_DIR = config["raw_data"]["neurons_directory"]
+    INTERMEDIATE_DIR.mkdir(parents=True, exist_ok=True)
+    output_pt = str(INTERMEDIATE_DIR / "synapses.pt")
+    GRAPH_DIR = config.get("raw_data", {}).get("neurons_directory") or str(RAW_DATA_DIR)
 
     extract_synapses(graph_dir=GRAPH_DIR, output_file=output_pt)
 
