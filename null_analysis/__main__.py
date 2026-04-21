@@ -80,7 +80,7 @@ from null_analysis.binning.compute_bins import compute_bins, BinModel
 from null_analysis.null_models.wrappers import get_null_model, NULL_MODELS
 from null_analysis.metrics.count_metrics import count_tri, generate_motif_df, plot_summary
 from null_analysis.metrics.hub_spoke_metrics import (
-    gini, coef_variation, mean_deg, max_deg, deg_assortativity
+    gini, coef_variation, mean_deg, max_deg, deg_assortativity, synapse_type_ratio
 )
 from null_analysis.metrics.clustering_metrics import clustering, transitivity, triangles
 from null_analysis.metrics.generators import run_null_models, summarize_results
@@ -99,6 +99,7 @@ METRIC_FUNCTIONS = {
     'clustering': clustering,
     'transitivity': transitivity,
     'triangles': triangles,
+    'exc_inh_ratio': synapse_type_ratio,  
 }
 
 def get_metric(name):
@@ -142,6 +143,13 @@ def parse_arguments():
         default=None,
         help='Path to positions .pt file (default: data/processed/positions.pt)'
     )
+
+    parser.add_argument(
+        '--distance-graph', '-g',
+        type=str,
+        default=None,
+        help='Path to pre-computed distance_graph.pt file (default: data/processed/distance_graph.pt)'
+    )
     
     parser.add_argument(
         '--output', '-o',
@@ -149,15 +157,7 @@ def parse_arguments():
         default=None,
         help='Output directory (default: outputs/)'
     )
-    
-    parser.add_argument(
-        '--distance-metric', '-d',
-        type=str,
-        default=None,
-        choices=['euclidean', 'adp'],
-        help='Distance metric for binning: euclidean or adp (default: euclidean)'
-    )
-    
+
     return parser.parse_args()
 
 # ============================================================================
@@ -170,9 +170,6 @@ def main():
     # Parse command-line arguments
     args = parse_arguments()
     
-    # Apply command-line overrides to CONFIG
-    if args.distance_metric:
-        CONFIG['distance_metric'] = args.distance_metric
     
     print("=" * 80)
     print("JHU-GNN: Graph Analysis Pipeline")
@@ -198,6 +195,14 @@ def main():
             positions_path = PROJECT_ROOT / positions_path
     else:
         positions_path = Path(CONFIG['data_dir']) / 'positions.pt'
+
+    if args.distance_graph:
+        distance_graph_path = Path(args.distance_graph)
+        # If relative path, resolve relative to project root
+        if not distance_graph_path.is_absolute():
+            distance_graph_path = PROJECT_ROOT / distance_graph_path
+    else:
+        distance_graph_path = Path(CONFIG['data_dir']) / 'distance_graph.pt'
     
     # Override output directory if provided
     if args.output:
@@ -211,6 +216,7 @@ def main():
     print(f"\nOutput directory: {output_path.absolute()}")
     print(f"Synapses file: {synapses_path.absolute()}")
     print(f"Positions file: {positions_path.absolute()}")
+    print(f"Distance graph file: {distance_graph_path.absolute()}")
 
     # Auto-regenerate synapses.pt and positions.pt from raw .pbz2 files if missing
     raw_graph_dir = CONFIG['raw_graph_dir']
@@ -225,10 +231,12 @@ def main():
 
     if not positions_path.exists():
         print(f"\n  ⚠ {positions_path.name} missing; regenerating from {raw_graph_dir}...")
+        print(f"\n  ⚠ {distance_graph_path.name} missing; regenerating from {raw_graph_dir}...")
         compute_positions_and_distances(
             synapses_file=None,
             graph_dir=raw_graph_dir,
             positions_file=positions_path,
+            distances_file=distance_graph_path,
             verbose=False,
         )
         if not positions_path.exists():
@@ -237,6 +245,20 @@ def main():
                 f"exists and contains .pbz2 neuron graphs."
             )
 
+    if not distance_graph_path.exists():
+        print(f"\n  ⚠ {distance_graph_path.name} missing; regenerating from {raw_graph_dir}...")
+        compute_positions_and_distances(
+            synapses_file=None,
+            graph_dir=raw_graph_dir,
+            positions_file=positions_path,
+            distances_file=distance_graph_path,
+            verbose=False,
+        )
+        if not distance_graph_path.exists():
+            raise RuntimeError(
+                f"Regeneration of {distance_graph_path} failed; check that {raw_graph_dir} "
+                f"exists and contains .pbz2 neuron graphs."
+            )
     # ========================================================================
     # 1. LOAD DATA
     # ========================================================================

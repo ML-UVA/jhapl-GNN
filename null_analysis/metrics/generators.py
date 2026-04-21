@@ -5,9 +5,13 @@ Runs arbitrary metric functions on graphs generated from null model
 generators and compares their distributions to ground truth values.
 """
 
+import warnings
 import networkx as nx
 import pandas as pd
 import numpy as np
+
+# Suppress pandas FutureWarnings about concat behavior
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 
 def run_null_models(null_generators: list, metrics: list, GT: nx.Graph, N=50):
