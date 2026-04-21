@@ -503,8 +503,13 @@ def main():
             print(f"  ✗ Error in subgraph visualization: {e}")
     
     # ========================================================================
-    # 8. EXPORT RESULTS TO PYTORCH FORMAT
+    # 8. EXPORT RESULTS
     # ========================================================================
+    # Summary of results exported to output directory:
+    # 
+    # - metric_summary.csv: Quantitative comparison of ground truth vs. null models
+    # - motif_summary.csv: Triadic motif count (if motif_comparison enabled)
+    # - *_visualization.png: Plots for motif comparison and subgraph views
     print("\n[8] Exporting results to PyTorch format...")
     try:
         # Export ground truth graph
