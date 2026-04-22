@@ -14,7 +14,7 @@ All pipeline parameters are controlled via `config.json`. Update this file to se
 **2. Run the Pipeline**
 The entire pipeline (Data Loading -> Graph Masking -> Training -> Inductive Evaluation -> Visualization) is executed via a single entry point:
 ```bash
-python -m synapse_gnn
+python -m synapse_gnn --build_data
 ```
 
 *(Note: You can also use this package as a library by importing modules directly into your own code, e.g., `from synapse_gnn.models.architecture import SynapsePredictor`)*
@@ -27,7 +27,7 @@ After running `python -m synapse_gnn`, the pipeline will automatically generate 
 
 * **Model Checkpoints:** Saved as `.pth` files in the configured `model_out` directory.
 * **Evaluation Metrics:** A JSON file containing ROC-AUC, PR-AUC, Brier Score, F1 Score, optimal threshold calculations, and confusion matrices.
-* **Visualizations:** Publication-ready PNGs for **Feature Importance** (Permutation testing via the MLP decoder) and **Score Distributions** (True Synapses vs. Spatial Candidates). 
+* **Visualizations:** PNGs for **Feature Importance** (Permutation testing via the MLP decoder) and **Score Distributions** (True Synapses vs. Spatial Candidates). 
 
 ---
 
