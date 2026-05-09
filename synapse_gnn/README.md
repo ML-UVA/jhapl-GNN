@@ -2,7 +2,7 @@
 
 A modular Graph Neural Network (GNN) library for predicting biological synaptic connections from spatial and morphological neural data. 
 
-This pipeline serves as the machine learning engine for the JHU-APL connectomics project. It acts as a graph-agnostic consumer—accepting pre-generated PyTorch graph tensors (both standard unweighted graphs and those with continuous physical touch weights)—and trains a spatially-aware GraphSAGE + MLP architecture. The pipeline automatically evaluates the model via spatial geographic masking and generates threshold-calibrated metrics and feature visualizations.
+This pipeline serves as the machine learning engine for the JHU-APL connectomics project. It acts as a graph-agnostic consumer—accepting pre-generated PyTorch graph tensors (both standard unweighted graphs and those with continuous physical touch weights)—and trains a spatially-aware GraphConv + MLP architecture. The pipeline automatically evaluates the model via spatial geographic masking and generates threshold-calibrated metrics and feature visualizations.
 
 ## 🚀 Quickstart
 
@@ -102,9 +102,10 @@ While testing the custom MLP decoder, I ran an A/B test to see how the model per
 2. **The Euclidean Graph:** Connects any neurons within a 100µm radius of each other, regardless of direct contact.
 
 **The Results:**
-Surprisingly, the Euclidean graph performed better across the board. It achieved a higher PR-AUC (0.926 vs 0.913) and dropped our false positives from 18,862 down to 11,434 (a 39% reduction). 
+Surprisingly, the Euclidean graph performed better across the board. The Euclidean model reduced false positives by 39% relative to ADP (11,434 vs. 18,862)
 
 **Potential reasons for why this happens:**
+* **Morphology is the Strongest Signal:** Because our MLP decoder explicitly looks at features like Axon Length and Soma Volume, simply knowing two neurons are in the same neighborhood is enough context. The model doesn't strictly need the surface-area overlap data to make an accurate prediction.
 * **More Neighborhood Context:** The ADP graph is pretty sparse because it strictly relies on physical touches. The Euclidean graph acts as a wide net, giving the GraphConv layers a much richer summary of the surrounding tissue during message passing.
 * **Forgiving of Pipeline Errors:** If the upstream mesh generation misses a tiny physical touch, the ADP graph drops that edge entirely. The Euclidean graph keeps it as a candidate, acting as a safety net.
-* **Morphology is the Strongest Signal:** Because our MLP decoder explicitly looks at features like Axon Length and Soma Volume, simply knowing two neurons are in the same neighborhood is enough context. The model doesn't strictly need the surface-area overlap data to make an accurate prediction.
+
